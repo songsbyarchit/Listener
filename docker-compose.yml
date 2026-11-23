@@ -1,0 +1,26 @@
+services:
+  listnr:
+    build: .
+    container_name: listnr
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      LISTNR_DATA_DIR: /data
+      TTS_BASE_URL: http://kokoro:8880/v1
+      TTS_MODEL: kokoro
+      TTS_VOICE: af_heart
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./data:/data
+    depends_on:
+      - kokoro
+
+  kokoro:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    container_name: listnr-kokoro
+    restart: unless-stopped
+    # The Kokoro CPU image may be amd64-only. If you are on Apple Silicon and
+    # the pull fails, uncomment the next line (slower, but works):
+    # platform: linux/amd64
