@@ -96,8 +96,14 @@ export function createMockTts({ audio = 'fake-mp3-bytes' } = {}) {
         headers: { 'content-type': 'audio/mpeg' }
       });
     }
-    if (href.endsWith('/voices')) {
+    if (href.endsWith('/audio/voices') || href.endsWith('/voices')) {
       return new Response(JSON.stringify(['af_heart', 'af_bella', 'am_michael']), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      });
+    }
+    if (href.endsWith('/models')) {
+      return new Response(JSON.stringify({ object: 'list', data: [] }), {
         status: 200,
         headers: { 'content-type': 'application/json' }
       });

@@ -57,12 +57,18 @@ export function createTtsService({ config, db, fetchImpl = globalThis.fetch }) {
     if (voiceCache && Date.now() - voiceCacheAt < 60_000) return voiceCache;
 
     let remote = [];
-    try {
-      const response = await fetchImpl(`${config.tts.baseUrl}/voices`, {
-        signal: AbortSignal.timeout(timeoutMs),
-        headers: config.tts.apiKey ? { Authorization: `Bearer ${config.tts.apiKey}` } : {}
-      });
-      if (response.ok) {
+    const endpoints = [
+      `${config.tts.baseUrl}/audio/voices`,
+      `${config.tts.baseUrl}/voices`
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetchImpl(endpoint, {
+          signal: AbortSignal.timeout(timeoutMs),
+          headers: config.tts.apiKey ? { Authorization: `Bearer ${config.tts.apiKey}` } : {}
+        });
+        if (!response.ok) continue;
         const payload = await response.json();
         const raw = Array.isArray(payload) ? payload : payload?.voices || payload?.data || [];
         remote = raw
@@ -80,9 +86,10 @@ export function createTtsService({ config, db, fetchImpl = globalThis.fetch }) {
               note: known?.note || 'Kokoro voice'
             };
           });
+        if (remote.length) break;
+      } catch {
+        // Try the next endpoint.
       }
-    } catch {
-      remote = [];
     }
 
     const merged = new Map();
@@ -94,25 +101,39 @@ export function createTtsService({ config, db, fetchImpl = globalThis.fetch }) {
   }
 
   async function probe() {
-    try {
-      const response = await fetchImpl(`${config.tts.baseUrl}/voices`, {
-        signal: AbortSignal.timeout(2500),
-        headers: config.tts.apiKey ? { Authorization: `Bearer ${config.tts.apiKey}` } : {}
-      });
-      return {
-        reachable: response.status < 500,
-        status: response.status,
-        baseUrl: config.tts.baseUrl,
-        model: config.tts.model
-      };
-    } catch (error) {
-      return {
-        reachable: false,
-        baseUrl: config.tts.baseUrl,
-        model: config.tts.model,
-        message: String(error?.cause?.code || error?.message || 'unreachable')
-      };
+    const endpoints = [
+      `${config.tts.baseUrl}/models`,
+      `${config.tts.baseUrl}/audio/voices`,
+      `${config.tts.baseUrl}/voices`
+    ];
+    let lastError = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetchImpl(endpoint, {
+          signal: AbortSignal.timeout(2500),
+          headers: config.tts.apiKey ? { Authorization: `Bearer ${config.tts.apiKey}` } : {}
+        });
+        if (response.status < 500) {
+          return {
+            reachable: true,
+            status: response.status,
+            baseUrl: config.tts.baseUrl,
+            model: config.tts.model
+          };
+        }
+        lastError = `HTTP ${response.status}`;
+      } catch (error) {
+        lastError = String(error?.cause?.code || error?.message || 'unreachable');
+      }
     }
+
+    return {
+      reachable: false,
+      baseUrl: config.tts.baseUrl,
+      model: config.tts.model,
+      message: lastError || 'unreachable'
+    };
   }
 
   async function requestSpeech(text, voice) {
