@@ -1,4 +1,5 @@
 const IS_EXTENSION = location.protocol === 'chrome-extension:';
+const IS_PANEL = IS_EXTENSION && document.body?.dataset?.listnrPanel === '1';
 const API_BASE = IS_EXTENSION ? 'http://127.0.0.1:8787' : '';
 const KOKORO_COMMAND = 'docker run --rm -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest';
 
@@ -40,7 +41,8 @@ const SOURCE_LABELS = {
   pdf: 'PDF',
   epub: 'EPUB',
   image: 'Image OCR',
-  url: 'Web page'
+  url: 'Web page',
+  page: 'Web page'
 };
 
 const S = {
@@ -93,7 +95,22 @@ async function init() {
   await Promise.all([loadSettings(), loadVoices()]);
   await loadLibrary();
   refreshTtsStatus();
-  routeFromHash();
+  const consumed = await consumePendingDocument();
+  if (!consumed) routeFromHash();
+}
+
+async function consumePendingDocument() {
+  if (!IS_PANEL || !S.serverOnline || !chrome.storage?.session) return false;
+  try {
+    const stored = await chrome.storage.session.get('listnrPendingDoc');
+    const pending = stored.listnrPendingDoc;
+    if (!pending?.id) return false;
+    await chrome.storage.session.remove('listnrPendingDoc');
+    navigateToDocument(pending.id);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function cacheElements() {
@@ -1738,13 +1755,26 @@ function bindEvents() {
     if (S.current) saveNow({ keepalive: true });
   });
 
+  if (IS_PANEL) {
+    try {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'session' && changes.listnrPendingDoc?.newValue?.id) {
+          consumePendingDocument();
+        }
+      });
+    } catch {
+      // Storage is unavailable outside an extension context.
+    }
+  }
+
   els['retry-connection'].addEventListener('click', async () => {
     const online = await connectToServer();
     if (!online) return;
     await Promise.all([loadSettings(), loadVoices()]);
     await loadLibrary();
     refreshTtsStatus();
-    routeFromHash();
+    const consumed = await consumePendingDocument();
+    if (!consumed) routeFromHash();
   });
 
   els['server-pill'].addEventListener('click', async () => {

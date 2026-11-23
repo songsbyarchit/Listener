@@ -322,7 +322,7 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     response.json({
       ok: true,
       name: 'LISTNR',
-      version: '0.2.0',
+      version: '0.2.1',
       tts: {
         baseUrl: config.tts.baseUrl,
         model: config.tts.model
@@ -452,6 +452,56 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
       .json({ document: summarize(getDocument(db, id)) });
 
     enqueue(() => processDocument(id));
+  });
+
+  app.post('/api/documents/import/page', (request, response) => {
+    let rawHtml = typeof request.body?.html === 'string' ? request.body.html : '';
+    let rawText = typeof request.body?.text === 'string' ? request.body.text : '';
+    const sourceUrl =
+      typeof request.body?.url === 'string' ? request.body.url.slice(0, 4096) : null;
+    const providedTitle = cleanText(request.body?.title).slice(0, 200);
+
+    if (!rawHtml.trim() && !rawText.trim()) {
+      throw badRequest('The page had no readable text.');
+    }
+    if (rawHtml.length > 6_000_000 || rawText.length > 2_000_000) {
+      throw new HttpError(413, 'That page is too large to import.', 'too_large');
+    }
+
+    let parsed;
+    if (rawHtml.trim()) {
+      try {
+        parsed = parseHtml(rawHtml, {
+          url: sourceUrl || undefined,
+          title: providedTitle || 'Web page'
+        });
+      } catch (error) {
+        if (!rawText.trim()) throw error;
+        rawHtml = '';
+      }
+    }
+
+    if (!parsed) {
+      parsed = parsePlainText(rawText, {
+        title: providedTitle || 'Web page'
+      });
+    }
+
+    const normalized = normalizeDocument(parsed);
+    const id = crypto.randomUUID();
+
+    createDocument(db, {
+      id,
+      title: normalized.title || providedTitle || 'Web page',
+      author: parsed.author || null,
+      sourceType: 'page',
+      sourceUrl,
+      status: 'extracting',
+      settings: documentDefaults()
+    });
+    markDocumentReady(db, id, normalized);
+
+    response.status(201).json({ document: detail(getDocument(db, id)) });
   });
 
   app.post('/api/documents/import/url', async (request, response) => {

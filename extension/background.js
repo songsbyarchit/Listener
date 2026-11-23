@@ -1,4 +1,9 @@
 const APP_URL = chrome.runtime.getURL('ui/app.html');
+const SERVER_URL = 'http://127.0.0.1:8787';
+
+if (chrome.sidePanel?.setOptions) {
+  chrome.sidePanel.setOptions({ path: 'ui/panel.html', enabled: true }).catch(() => {});
+}
 
 async function openApp() {
   const existing = await chrome.tabs.query({ url: APP_URL });
@@ -14,6 +19,151 @@ async function openApp() {
   }
   await chrome.tabs.create({ url: APP_URL });
 }
+
+async function openReader(docId, tabId) {
+  const url = `${APP_URL}#/doc/${docId}`;
+
+  // Try Chrome's side panel first. Some Chrome builds only allow this from an
+  // action/command gesture; if it is rejected, fall back to a compact window.
+  if (chrome.sidePanel?.open) {
+    try {
+      await chrome.storage.session.set({
+        listnrPendingDoc: { id: docId, ts: Date.now() }
+      });
+      await chrome.sidePanel.open({ tabId });
+      return { mode: 'side-panel' };
+    } catch {
+      await chrome.storage.session.remove('listnrPendingDoc');
+    }
+  }
+
+  try {
+    const stored = await chrome.storage.session.get('listnrReaderWindowId');
+    let windowId = stored.listnrReaderWindowId ?? null;
+
+    if (windowId != null) {
+      try {
+        await chrome.windows.get(windowId);
+        const [tab] = await chrome.tabs.query({ windowId });
+        if (tab?.id != null) {
+          await chrome.tabs.update(tab.id, { url, active: true });
+          await chrome.windows.update(windowId, { focused: true });
+          return { mode: 'window' };
+        }
+      } catch {
+        windowId = null;
+        await chrome.storage.session.remove('listnrReaderWindowId');
+      }
+    }
+
+    const win = await chrome.windows.create({
+      url,
+      type: 'popup',
+      width: 480,
+      height: 900
+    });
+    await chrome.storage.session.set({ listnrReaderWindowId: win.id });
+    return { mode: 'window' };
+  } catch {
+    await chrome.tabs.create({ url });
+    return { mode: 'tab' };
+  }
+}
+
+async function importPage(message, sender) {
+  const page = message.page || {};
+  let html = typeof page.html === 'string' ? page.html : '';
+  let text = typeof page.text === 'string' ? page.text : '';
+
+  if (html.length > 6_000_000) html = '';
+  if (text.length > 1_500_000) text = text.slice(0, 1_500_000);
+  if (!html.trim() && !text.trim()) {
+    return { ok: false, error: 'This page has no readable text.' };
+  }
+
+  const url =
+    typeof page.url === 'string'
+      ? page.url.slice(0, 4096)
+      : sender.tab?.url || '';
+  const title =
+    typeof page.title === 'string'
+      ? page.title.slice(0, 500)
+      : sender.tab?.title || 'Web page';
+
+  let response;
+  try {
+    response = await fetch(`${SERVER_URL}/api/documents/import/page`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, title, html, text }),
+      signal: AbortSignal.timeout(60000)
+    });
+  } catch {
+    return {
+      ok: false,
+      error:
+        'The local LISTNR server is offline. Run docker compose up -d in ~/Downloads/Listener.'
+    };
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: payload?.error?.message || `Import failed (${response.status}).`
+    };
+  }
+
+  const docId = payload?.document?.id;
+  if (!docId) return { ok: false, error: 'The server did not return a document.' };
+
+  const opened = await openReader(docId, sender.tab?.id);
+  return { ok: true, docId, mode: opened.mode };
+}
+
+async function readPageInTab(tabId) {
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'listnr:listen-page' });
+    return;
+  } catch {
+    // The tab was loaded before the extension/content script; inject once.
+  }
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['extension/page-reader.js']
+    });
+    await chrome.tabs.sendMessage(tabId, { type: 'listnr:listen-page' });
+  } catch {
+    // Restricted page (chrome://, Web Store, PDF viewer, etc.).
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === 'listnr:import-page' && sender.tab?.id != null) {
+    importPage(message, sender)
+      .then((result) => sendResponse(result))
+      .catch((error) =>
+        sendResponse({ ok: false, error: String(error?.message || error) })
+      );
+    return true;
+  }
+  return false;
+});
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'read-page') return;
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (tab?.id != null) await readPageInTab(tab.id);
+});
+
+chrome.windows.onRemoved.addListener(async (windowId) => {
+  const stored = await chrome.storage.session.get('listnrReaderWindowId');
+  if (stored.listnrReaderWindowId === windowId) {
+    await chrome.storage.session.remove('listnrReaderWindowId');
+  }
+});
 
 chrome.action.onClicked.addListener(openApp);
 

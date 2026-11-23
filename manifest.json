@@ -2,11 +2,14 @@
   "manifest_version": 3,
   "name": "LISTNR — Listener",
   "short_name": "LISTNR",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A local-first document reader with a Chrome extension UI, SQLite library, and local Kokoro speech.",
   "minimum_chrome_version": "116",
   "permissions": [
-    "tabs"
+    "tabs",
+    "storage",
+    "sidePanel",
+    "scripting"
   ],
   "host_permissions": [
     "http://127.0.0.1/*",
@@ -14,6 +17,26 @@
   ],
   "background": {
     "service_worker": "extension/background.js"
+  },
+  "side_panel": {
+    "default_path": "ui/panel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["extension/page-reader.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "commands": {
+    "read-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+L",
+        "mac": "Alt+Shift+L"
+      },
+      "description": "Read the current page with LISTNR"
+    }
   },
   "action": {
     "default_title": "Open LISTNR",

@@ -816,10 +816,21 @@ input[type="range"]::-webkit-slider-thumb {
 @media (max-width: 640px) {
   .empty { padding: 24px 18px; }
   .feature-row { grid-template-columns: 1fr; gap: 14px; }
-  .reader-head { flex-wrap: wrap; }
+  .reader-head { flex-wrap: wrap; gap: 10px; padding: 14px 16px 10px; }
+  .reader-head h1 { font-size: 23px; }
+  .doc-meta { margin-top: 4px; }
   .head-actions { width: 100%; justify-content: flex-end; }
-  .reader-toolbar { grid-template-columns: 1fr; }
-  .document { padding: 24px 20px 60px; }
+  .head-actions .ghost-btn { height: 28px; padding: 0 9px; font-size: 10px; }
+  .reader-toolbar { grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 10px 16px; }
+  .voice-field,
+  .chapter-field { grid-column: 1 / -1; }
+  .pacing-bar { gap: 10px 14px; padding: 7px 16px 8px; }
+  .pacing-bar label { grid-template-columns: auto 70px auto; gap: 6px; }
+  .pacing-bar input { width: 70px; }
+  .document { padding: 20px 18px 48px; font-size: 17px; }
+  .player-row { padding: 8px 14px 9px; gap: 5px; }
+  .play { width: 42px; height: 42px; }
+  .play svg { width: 18px; height: 18px; }
   .voice-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
   .modal { padding: 20px; }

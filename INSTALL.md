@@ -141,6 +141,20 @@ This is a useful fallback if you do not want to install an extension. The Chrome
 
 ---
 
+## Reading the page you're on
+
+After loading or reloading the extension, **reload any tabs that were already open** once so the content script can attach.
+
+On readable `http(s)` pages you will see a small **Listen** pill in the bottom-right corner:
+
+- Click **Listen** to capture the current page DOM and open it in LISTNR. This works on pages behind a login because it does not re-fetch the URL.
+- **Alt+Shift+L** (Option+Shift+L on macOS) does the same from the keyboard.
+- LISTNR opens Chrome's side panel when the browser allows it, otherwise a compact reader window.
+- The captured page is saved as a normal library document. The × hides the pill for that tab.
+- Very short pages, `chrome://` pages, the Web Store, and Chrome's PDF viewer do not get a pill.
+
+The toolbar icon still opens the full library/reader tab. The floating pill is for the page you are currently reading.
+
 ## Choosing voices
 
 Open **Voice** (top right) or click the **Voice** row in the sidebar.
@@ -249,6 +263,11 @@ The first request may take 10–60 seconds on CPU while the model loads. LISTNR 
 **Chrome extension does nothing**
 - Load the repository folder (with `manifest.json` at the root), not `ui/`.
 - The extension can only reach localhost; that is intentional.
+
+**The Listen pill is missing**
+- Reload the extension at `chrome://extensions`, then reload the page once.
+- Very short pages do not show it. `chrome://` pages, the Web Store, and Chrome's PDF viewer cannot run content scripts.
+- If you closed it with ×, reopen the tab or reload; the hide flag is per tab/session.
 
 **PDF has no text**
 Scanned PDFs contain images, not text. Export the pages as PNG/JPEG and import those for OCR, or use a PDF with an OCR text layer.
