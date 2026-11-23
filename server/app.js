@@ -322,7 +322,7 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     response.json({
       ok: true,
       name: 'LISTNR',
-      version: '0.2.1',
+      version: '0.2.2',
       tts: {
         baseUrl: config.tts.baseUrl,
         model: config.tts.model

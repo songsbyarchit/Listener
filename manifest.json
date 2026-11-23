@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LISTNR — Listener",
   "short_name": "LISTNR",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A local-first document reader with a Chrome extension UI, SQLite library, and local Kokoro speech.",
   "minimum_chrome_version": "116",
   "permissions": [

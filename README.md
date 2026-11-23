@@ -2,7 +2,7 @@
 
 **A local-first document reader that covers Speechify's core loop — as a Chrome extension and a local web app.**
 
-A small **Listen** pill now appears on readable web pages. One click captures the page you are actually looking at — including pages behind a login — and opens it in a compact LISTNR reader. You can also paste text or import TXT, Markdown, HTML, PDF, EPUB, PNG, and JPEG from the library. LISTNR extracts chapters and paragraphs, reads them with a **local Kokoro voice** in sentence-sized chunks, highlights the sentence as it plays, keeps your place in SQLite, and never sends your library to a server you do not own.
+A small **Listen** pill appears on readable web pages. One click captures the page you are actually looking at — including pages behind a login — and plays it **without leaving the page**: an in-page panel gives you play/pause, sentence skip, speed, voice, volume, and pauses, while the current sentence is highlighted directly on the page. The full LISTNR library/reader is still one click away. You can also paste text or import TXT, Markdown, HTML, PDF, EPUB, PNG, and JPEG from the library. LISTNR reads with a **local Kokoro voice** in sentence-sized chunks and keeps your place in SQLite, and never sends your library to a server you do not own.
 
 No account. No subscription. No hosted speech API. No API key. No telemetry.
 
@@ -70,11 +70,13 @@ Full instructions, Docker notes, Apple Silicon guidance, backup, and troubleshoo
 - **Read the page you're on**
   - Floating **Listen** pill on readable `http(s)` pages
   - Captures the current DOM (so logged-in pages work), not just the public URL
-  - Opens Chrome's side panel when available, otherwise a compact reader window
+  - **In-page player** with play/pause, sentence skip, stop, speed, voice, volume, and pauses
+  - **Highlight overlay** follows the current sentence directly on the page
+  - Minimize keeps playing; expand opens the separate full reader/library
   - `Alt+Shift+L` (Option+Shift+L on macOS) does the same from the keyboard
   - The captured page becomes a normal library document
 - **Chrome extension**
-  - Toolbar action opens the library/reader as an extension page
+  - Toolbar action opens the full library/reader as an extension page
   - Talks to `http://127.0.0.1:8787` through host permissions
   - The same UI is served by Express at `/` if you prefer a web tab
 
@@ -84,9 +86,9 @@ Full instructions, Docker notes, Apple Silicon guidance, backup, and troubleshoo
 | --- | --- |
 | ![Library](docs/screenshots/library.png) | ![Voice picker](docs/screenshots/voices.png) |
 
-| Listen pill on any page | Compact page reader |
-| --- | --- |
-| ![Listen pill](docs/screenshots/page-pill.png) | ![Page reader](docs/screenshots/page-reader.png) |
+| Listen pill | In-page player + page highlight | Separate full reader |
+| --- | --- | --- |
+| ![Listen pill](docs/screenshots/page-pill.png) | ![In-page player](docs/screenshots/page-player.png) | ![Full reader](docs/screenshots/page-reader.png) |
 
 ---
 
@@ -102,8 +104,8 @@ From the official ONNX model repository:
 | Every individual voice (`voices/*.bin`) | **0.5 MB** |
 | Four starters (Heart, Bella, Michael, Emma) | **~2 MB** |
 | All 54 voices | **~27 MB** |
-| LISTNR extension zip | **46 KB** |
-| LISTNR server source zip | **~1.0 MB** |
+| LISTNR extension zip | **55 KB** |
+| LISTNR server source zip | **~1.2 MB** |
 | Installed Node dependencies (PDF/EPUB/HTML/OCR) | **~226 MB** |
 | Kokoro-FastAPI Docker image | large (Python + ONNX runtime), pulled once |
 
@@ -213,14 +215,14 @@ node --test tests/page-import.test.js
 node --test tests/e2e.test.js
 ```
 
-The E2E test imports a file, fetches synthesized speech, saves a position, restarts the app against the same SQLite data, and verifies the position/settings resume. Parsers are tested against real PDF, EPUB, HTML, Markdown, text, and PNG fixtures — including a real local Tesseract OCR pass. The page-capture tests cover DOM imports with login-only content and plain-text fallback. The UI was also exercised in Chrome for Testing against a real Kokoro server: paste import, Markdown upload/extraction polling, library, playback/advance, pause/resume, sentence skip, voice preview/switch, save, reload/resume, the extension-page CORS path, and the floating Listen pill → page capture → reader window flow.
+The E2E test imports a file, fetches synthesized speech, saves a position, restarts the app against the same SQLite data, and verifies the position/settings resume. Parsers are tested against real PDF, EPUB, HTML, Markdown, text, and PNG fixtures — including a real local Tesseract OCR pass. The page-capture tests cover DOM imports with login-only content and plain-text fallback. The UI was also exercised in Chrome for Testing against a real Kokoro server: paste import, Markdown upload/extraction polling, library, playback/advance, pause/resume, sentence skip, voice preview/switch, save, reload/resume, the extension-page CORS path, and the full in-page flow — Listen pill, page import, in-page playback, page highlight, speed/voice settings, minimize-while-playing, and the separate full reader.
 
 ## Project layout
 
 ```text
 manifest.json              MV3 extension manifest
 extension/background.js    Page import, side panel/window, routing, commands
-extension/page-reader.js   Floating Listen pill + current-page DOM capture
+extension/page-reader.js   Listen pill, in-page player, page highlight, DOM capture
 ui/                        Shared vanilla JS/CSS UI (extension + web)
 ui/panel.html              Side-panel variant of the reader UI
 server/

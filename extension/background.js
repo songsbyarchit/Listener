@@ -117,8 +117,107 @@ async function importPage(message, sender) {
   const docId = payload?.document?.id;
   if (!docId) return { ok: false, error: 'The server did not return a document.' };
 
+  if (message.inline === true) {
+    return { ok: true, docId, document: payload.document };
+  }
+
   const opened = await openReader(docId, sender.tab?.id);
   return { ok: true, docId, mode: opened.mode };
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
+  }
+  return btoa(binary);
+}
+
+async function fetchAudioForTab(message) {
+  const docId = String(message.docId || '');
+  const index = Number(message.index);
+  const voice = String(message.voice || '');
+
+  if (!/^[a-f0-9-]{8,}$/i.test(docId) || !Number.isInteger(index) || index < 0) {
+    return { ok: false, error: 'Invalid audio request.' };
+  }
+
+  let response;
+  try {
+    response = await fetch(
+      `${SERVER_URL}/api/documents/${encodeURIComponent(docId)}/audio/${index}?voice=${encodeURIComponent(voice)}`,
+      { signal: AbortSignal.timeout(120000) }
+    );
+  } catch {
+    return {
+      ok: false,
+      code: 'tts_unavailable',
+      error: 'The local voice server is offline. Start Kokoro-FastAPI and try again.'
+    };
+  }
+
+  if (!response.ok) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    return {
+      ok: false,
+      status: response.status,
+      code: payload?.error?.code,
+      error: payload?.error?.message || `Audio request failed (${response.status}).`
+    };
+  }
+
+  const buffer = await response.arrayBuffer();
+  return {
+    ok: true,
+    data: arrayBufferToBase64(buffer),
+    contentType: response.headers.get('content-type') || 'audio/mpeg'
+  };
+}
+
+async function fetchVoiceList() {
+  try {
+    const response = await fetch(`${SERVER_URL}/api/voices`, {
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) return { ok: false, error: `HTTP ${response.status}` };
+    const payload = await response.json();
+    return {
+      ok: true,
+      voices: payload.voices || [],
+      defaultVoice: payload.defaultVoice || 'af_heart'
+    };
+  } catch {
+    return { ok: false, error: 'The local LISTNR server is offline.' };
+  }
+}
+
+async function savePageState(message) {
+  const docId = String(message.docId || '');
+  if (!/^[a-f0-9-]{8,}$/i.test(docId)) return { ok: false, error: 'Invalid document.' };
+  try {
+    const response = await fetch(
+      `${SERVER_URL}/api/documents/${encodeURIComponent(docId)}/state`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          position: message.position,
+          settings: message.settings
+        }),
+        signal: AbortSignal.timeout(10000)
+      }
+    );
+    return { ok: response.ok };
+  } catch {
+    return { ok: false, error: 'Could not save reading position.' };
+  }
 }
 
 async function readPageInTab(tabId) {
@@ -141,7 +240,9 @@ async function readPageInTab(tabId) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === 'listnr:import-page' && sender.tab?.id != null) {
+  if (!message || typeof message.type !== 'string') return false;
+
+  if (message.type === 'listnr:import-page' && sender.tab?.id != null) {
     importPage(message, sender)
       .then((result) => sendResponse(result))
       .catch((error) =>
@@ -149,6 +250,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       );
     return true;
   }
+
+  if (message.type === 'listnr:get-audio' && sender.tab?.id != null) {
+    fetchAudioForTab(message)
+      .then(sendResponse)
+      .catch((error) =>
+        sendResponse({ ok: false, error: String(error?.message || error) })
+      );
+    return true;
+  }
+
+  if (message.type === 'listnr:get-voices') {
+    fetchVoiceList()
+      .then(sendResponse)
+      .catch((error) =>
+        sendResponse({ ok: false, error: String(error?.message || error) })
+      );
+    return true;
+  }
+
+  if (message.type === 'listnr:save-page-state') {
+    savePageState(message)
+      .then(sendResponse)
+      .catch((error) =>
+        sendResponse({ ok: false, error: String(error?.message || error) })
+      );
+    return true;
+  }
+
+  if (message.type === 'listnr:open-reader' && sender.tab?.id != null) {
+    openReader(String(message.docId || ''), sender.tab.id)
+      .then((opened) => sendResponse({ ok: true, mode: opened.mode }))
+      .catch((error) =>
+        sendResponse({ ok: false, error: String(error?.message || error) })
+      );
+    return true;
+  }
+
   return false;
 });
 

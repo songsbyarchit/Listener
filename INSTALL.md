@@ -147,13 +147,14 @@ After loading or reloading the extension, **reload any tabs that were already op
 
 On readable `http(s)` pages you will see a small **Listen** pill in the bottom-right corner:
 
-- Click **Listen** to capture the current page DOM and open it in LISTNR. This works on pages behind a login because it does not re-fetch the URL.
+- Click **Listen** to capture the current page DOM. It plays **inside the page** in a LISTNR panel — the page stays open and the current sentence is highlighted on the page.
 - **Alt+Shift+L** (Option+Shift+L on macOS) does the same from the keyboard.
-- LISTNR opens Chrome's side panel when the browser allows it, otherwise a compact reader window.
-- The captured page is saved as a normal library document. The × hides the pill for that tab.
+- The panel has play/pause, previous/next sentence, stop, speed, voice, volume, and sentence/paragraph pauses.
+- **Minimize** keeps playback and highlighting running; the pill shows **Playing** and reopens the panel.
+- The **expand icon** in the panel, or the toolbar icon, opens the separate full library/reader.
+- The captured page is saved as a normal library document. The pill's × hides LISTNR for that tab.
+- “Follow highlighted text” scrolls the page when the current sentence would be off-screen or behind the panel; turn it off in the panel settings if you’d rather control scrolling yourself.
 - Very short pages, `chrome://` pages, the Web Store, and Chrome's PDF viewer do not get a pill.
-
-The toolbar icon still opens the full library/reader tab. The floating pill is for the page you are currently reading.
 
 ## Choosing voices
 
