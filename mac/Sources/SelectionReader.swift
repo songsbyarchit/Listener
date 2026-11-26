@@ -18,6 +18,11 @@ enum SelectionReader {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
 
         if let focused = focusedElement() ?? focusedElement(appElement: appElement) {
+            // A long document or a terminal holds far more than the screen shows.
+            // Read what is visible, not the whole buffer.
+            if let visible = visibleText(focused), isUseful(visible) {
+                return trim(visible)
+            }
             for attribute in [kAXValueAttribute, kAXSelectedTextAttribute] {
                 if let text = stringAttribute(focused, attribute), isUseful(text) {
                     return trim(text)
@@ -64,6 +69,19 @@ enum SelectionReader {
         guard AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &window) == .success,
               let window else { return nil }
         return (window as! AXUIElement)
+    }
+
+    /// The part of a text element that is on screen, when the app reports it.
+    private static func visibleText(_ element: AXUIElement) -> String? {
+        var rangeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXVisibleCharacterRangeAttribute as CFString, &rangeValue) == .success,
+              let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() else { return nil }
+        var range = CFRange()
+        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &range), range.length > 0 else { return nil }
+        var text: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(element, kAXStringForRangeParameterizedAttribute as CFString,
+                                                         rangeValue, &text) == .success else { return nil }
+        return text as? String
     }
 
     private static func stringAttribute(_ element: AXUIElement, _ attribute: String) -> String? {

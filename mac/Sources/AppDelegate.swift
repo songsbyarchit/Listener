@@ -28,12 +28,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         homeWindow.onReadClipboard = { [weak self] in self?.readClipboard() }
         homeWindow.onClose = { [weak self] in
             NSApp.setActivationPolicy(.accessory)
-            self?.statusItem.button?.image = NSImage(systemSymbolName: "speaker.wave.2", accessibilityDescription: "listnr")
+            self?.statusItem.button?.image = MenuBarMark.image
             self?.statusItem.button?.image?.isTemplate = true
         }
         hud = PlayerHUD()
         hud.onPause = { [weak self] in self?.speaker.togglePause() }
         hud.onStop = { [weak self] in self?.speaker.stop() }
+        hud.progressProvider = { [weak self] in self?.speaker.progress }
+        hud.onSpeed = { [weak self] in self?.speaker.cycleRate() ?? 1 }
+        hud.speedProvider = { [weak self] in self?.speaker.rate ?? 1 }
         speaker.onState = { [weak self] state in
             guard let self else { return }
             self.pauseItem.title = state == .paused ? "Continue" : "Pause"
@@ -71,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "speaker.wave.2", accessibilityDescription: "listnr")
+        statusItem.button?.image = MenuBarMark.image
         statusItem.button?.image?.isTemplate = true
         statusItem.button?.toolTip = "listnr — read selected text"
 
@@ -123,6 +126,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func readSelection() {
+        // ⌥L while reading stops it, like a play/stop key.
+        if speaker.isActive {
+            speaker.stop()
+            return
+        }
         if let selected = SelectionReader.selectedText(), !selected.isEmpty {
             speak(selected, source: "selection")
             return
@@ -149,7 +157,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func speak(_ text: String, source: String = "selection") {
         lastText = text
-        ReadStore.shared.add(text: text, source: source)
+        ReadStore.shared.add(text: text, source: source,
+                             voice: ListnrVoiceCatalog.shared.currentVoice()?.id)
         hud.show(text: text, status: "reading")
         speaker.speak(text)
     }
@@ -162,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openWindow() {
         homeWindow.show()
-        statusItem.button?.image = NSImage(systemSymbolName: "speaker.wave.2.fill", accessibilityDescription: "listnr")
+        statusItem.button?.image = MenuBarMark.image
         statusItem.button?.image?.isTemplate = true
     }
 

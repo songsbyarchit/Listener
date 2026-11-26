@@ -65,3 +65,14 @@ final class KernlMarkView: NSView {
     }
 
 }
+
+/// The app's own mark as a menu bar template, so macOS tints it for light and
+/// dark menu bars. Drawn from the same glyph as the app icon.
+enum MenuBarMark {
+    static var image: NSImage? {
+        guard let image = NSImage(named: "MenuBarIcon") else { return nil }
+        image.isTemplate = true
+        image.size = NSSize(width: 18, height: 18)
+        return image
+    }
+}

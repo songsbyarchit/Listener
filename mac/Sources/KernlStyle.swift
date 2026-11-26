@@ -432,3 +432,32 @@ final class KernlBubbleView: NSView {
         layer?.backgroundColor = KernlTheme.soft.cgColor
     }
 }
+
+/// One window size for every Kernl app. Each home window opens at the same
+/// size, centred on the screen in use, and page content stops widening at a
+/// readable measure so a very wide window adds margin instead of stretching.
+enum KernlWindowSize {
+    static let standard = NSSize(width: 1040, height: 720)
+    static let minimum = NSSize(width: 860, height: 600)
+    static let readableWidth: CGFloat = 960
+
+    static func reset(_ window: NSWindow) {
+        let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? window.screen ?? NSScreen.main
+        guard let visible = screen?.visibleFrame else { window.center(); return }
+        let content = NSSize(width: min(standard.width, visible.width - 48),
+                             height: min(standard.height, visible.height - 48))
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: content))
+        frame.origin = NSPoint(x: visible.midX - frame.width / 2, y: visible.midY - frame.height / 2)
+        window.setFrame(frame, display: true)
+    }
+
+    /// Fills the window up to the readable width, then holds that width.
+    static func limitReadableWidth(_ content: NSView, in root: NSView) {
+        let fill = content.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -32)
+        fill.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            fill,
+            content.widthAnchor.constraint(lessThanOrEqualToConstant: readableWidth)
+        ])
+    }
+}

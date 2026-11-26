@@ -42,9 +42,9 @@ final class ListnrHomeWindowController {
         let stats = KernlAppShell.statRow([
             ("Reads", "\(reads.count)", "desktop sessions"),
             ("Voice", ListnrVoiceCatalog.shared.currentVoice()?.name ?? "Heart", "same as Chrome"),
-            ("Shortcut", "⌥L", "selection or clipboard"),
+            ("Shortcut", "⌥L", "selection or screen"),
             ("Chrome", "extension", "page reader")
-        ])
+        ], onSelect: { [weak self] index in self?.openTile(index) })
         let quick = KernlCard(content: fleetVStack([
             fleetLabel("Quick actions", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1),
             fleetHStack([
@@ -170,11 +170,99 @@ final class ListnrHomeWindowController {
         NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".fleet", isDirectory: true))
     }
-    @objc private func openExtension() {
-        let root = Bundle.main.bundleURL.deletingLastPathComponent()
+    /// The unpacked extension folder for chrome://extensions → Load unpacked.
+    static var extensionFolder: URL? {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let fromBuild = Bundle.main.bundleURL.deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
-        NSWorkspace.shared.open(root)
+        return [fromBuild, home.appendingPathComponent("Downloads/Listener")]
+            .first { FileManager.default.fileExists(atPath: $0.appendingPathComponent("manifest.json").path) }
     }
+
+    static var extensionVersion: String {
+        guard let folder = extensionFolder,
+              let data = try? Data(contentsOf: folder.appendingPathComponent("manifest.json")),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let version = json["version"] as? String else { return "Unknown" }
+        return version
+    }
+
+    @objc private func openExtension() {
+        if let folder = Self.extensionFolder { NSWorkspace.shared.open(folder) }
+    }
+
+    // MARK: Tile detail pages
+
+    private func openTile(_ index: Int) {
+        switch index {
+        case 0: readsDetail()
+        case 1: voiceDetail()
+        case 2: shortcutDetail()
+        default: chromeDetail()
+        }
+    }
+
+    private func readsDetail() {
+        let reads = ReadStore.shared.entries
+        let week = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let bySource = Dictionary(grouping: reads, by: { $0.source }).map { ($0.key, $0.value.count) }.sorted { $0.1 > $1.1 }
+        let characters = reads.reduce(0) { $0 + $1.text.count }
+        var facts: [(String, String)] = [
+            ("All reads", "\(reads.count)"),
+            ("Last 7 days", "\(reads.filter { $0.date >= week }.count)"),
+            ("Read aloud", "\(characters) characters, about \(max(0, characters / 900)) minutes")
+        ]
+        if !bySource.isEmpty {
+            facts.append(("By source", bySource.map { "\($0.0) \($0.1)" }.joined(separator: ", ")))
+        }
+        let entries = reads.prefix(12).map { entry in
+            (meta: [KernlAppShell.shortDate(entry.date), entry.source, entry.voice ?? ""].filter { !$0.isEmpty }.joined(separator: ", "),
+             text: entry.text.replacingOccurrences(of: "\n", with: " "))
+        }
+        shell.showDetail(title: "Reads", subtitle: "Everything listnr has read aloud on this Mac, newest first.", body: [
+            KernlAppShell.factCard("Summary", facts),
+            KernlAppShell.entryCard("Recent reads", Array(entries), empty: "Select text anywhere and press ⌥L.")
+        ])
+    }
+
+    private func voiceDetail() {
+        let current = ListnrVoiceCatalog.shared.currentVoice()
+        let change = fleetButton("Change voice", primary: true, target: self, action: #selector(openSettingsFromDetail))
+        shell.showDetail(title: "Voice", subtitle: "The voice listnr reads with, shared with the Chrome reader.", body: [
+            KernlAppShell.factCard("Current voice", [
+                ("Voice", current?.name ?? "Heart"),
+                ("Server", "Local Kokoro at 127.0.0.1:8787, the same one Chrome uses"),
+                ("Cost", "Free. Nothing leaves this Mac"),
+                ("If the server is off", "listnr falls back to a US English macOS voice")
+            ]),
+            fleetHStack([change, fleetSpacer()], spacing: 0)
+        ])
+    }
+
+    private func shortcutDetail() {
+        shell.showDetail(title: "Shortcut", subtitle: "Press ⌥L in any app to hear the text you are looking at.", body: [
+            KernlAppShell.factCard("What ⌥L reads", [
+                ("Selected text", "Read first, whenever anything is selected"),
+                ("Nothing selected", "The main block of text in the window you are using"),
+                ("In Chrome", "The extension reads the page instead, with the same voice"),
+                ("Stop", "Press ⌥L again, or use the stop button on the player")
+            ], note: "listnr needs Accessibility access to read selections and screen text.")
+        ])
+    }
+
+    private func chromeDetail() {
+        let open = fleetButton("Open extension folder", target: self, action: #selector(openExtension))
+        shell.showDetail(title: "Chrome extension", subtitle: "Reads web pages aloud with the same local voice.", body: [
+            KernlAppShell.factCard("Extension", [
+                ("Version", Self.extensionVersion),
+                ("Install", "chrome://extensions, turn on Developer mode, then Load unpacked and pick the extension folder"),
+                ("Voice", "Shared with the desktop reader, set in listnr settings")
+            ]),
+            fleetHStack([open, fleetSpacer()], spacing: 0)
+        ])
+    }
+
+    @objc private func openSettingsFromDetail() { shell.show(section: 1) }
     @objc private func openKeys() {
         NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".fleet", isDirectory: true)

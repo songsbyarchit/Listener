@@ -138,7 +138,7 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         window.title = appName
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.minSize = NSSize(width: 860, height: 600)
+        window.minSize = KernlWindowSize.minimum
         window.isReleasedWhenClosed = false
         // Open on the Space the person is looking at, not the one it was last on.
         window.collectionBehavior.insert(.moveToActiveSpace)
@@ -200,9 +200,10 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
             separator.widthAnchor.constraint(equalToConstant: 1),
             contentHost.topAnchor.constraint(equalTo: root.topAnchor, constant: 32),
             contentHost.leadingAnchor.constraint(equalTo: separator.trailingAnchor, constant: 32),
-            contentHost.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -32),
+            contentHost.trailingAnchor.constraint(lessThanOrEqualTo: root.trailingAnchor, constant: -32),
             contentHost.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -20)
         ])
+        KernlWindowSize.limitReadableWidth(contentHost, in: root)
         show(section: 0, activate: false)
     }
 
@@ -214,8 +215,23 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         guard sections.indices.contains(section) else { return }
         selected = section
         for (index, row) in rows.enumerated() { row.isSelected = index == section }
+        install(pageBuilder(section), activate: activate)
+    }
+
+    /// Opens a detail page for a home tile. The sidebar keeps its selection and
+    /// the back button returns to the page the tile came from.
+    func showDetail(title: String, subtitle: String, body: [NSView]) {
+        let origin = sections.indices.contains(selected) ? sections[selected] : "Home"
+        let back = fleetButton("Back to \(origin.lowercased())", target: self, action: #selector(closeDetail))
+        let header = Self.pageHeader(eyebrow: "", title: title, subtitle: subtitle)
+        let page = fleetVStack([fleetHStack([back, fleetSpacer()], spacing: 0), header] + body, spacing: 18)
+        install(page, activate: false)
+    }
+
+    @objc private func closeDetail() { show(section: selected, activate: false) }
+
+    private func install(_ page: NSView, activate: Bool) {
         contentHost.subviews.forEach { $0.removeFromSuperview() }
-        let page = pageBuilder(section)
         let scroll = NSScrollView()
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.hasVerticalScroller = true
@@ -242,7 +258,7 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
             page.bottomAnchor.constraint(equalTo: document.bottomAnchor, constant: -24)
         ])
         if activate, let window {
-            if !window.isVisible { window.center() }
+            if !window.isVisible { KernlWindowSize.reset(window) }
             showWindow(nil)
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -266,8 +282,48 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
                          padding: NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16))
     }
 
-    static func statRow(_ cards: [(label: String, value: String, foot: String)]) -> NSView {
-        KernlStatGrid(cards)
+    static func statRow(_ cards: [(label: String, value: String, foot: String)],
+                        onSelect: ((Int) -> Void)? = nil) -> NSView {
+        let grid = KernlStatGrid(cards)
+        grid.onSelect = onSelect
+        return grid
+    }
+
+    /// A titled card of label / value lines for tile detail pages.
+    static func factCard(_ title: String, _ facts: [(String, String)], note: String? = nil) -> NSView {
+        var views: [NSView] = [fleetLabel(title, size: 15, weight: .medium, color: KernlTheme.ink, lines: 1)]
+        for (label, value) in facts {
+            let name = fleetLabel(label, size: 13, color: KernlTheme.muted, lines: 1)
+            name.setContentHuggingPriority(.required, for: .horizontal)
+            name.setContentCompressionResistancePriority(.required, for: .horizontal)
+            name.widthAnchor.constraint(greaterThanOrEqualToConstant: 140).isActive = true
+            let text = fleetLabel(value, size: 13, color: KernlTheme.ink, lines: 0)
+            text.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            views.append(fleetHStack([name, text], spacing: 16, alignment: .firstBaseline))
+        }
+        if let note { views.append(fleetLabel(note, size: 12, color: KernlTheme.muted, lines: 0)) }
+        return KernlCard(content: fleetVStack(views, spacing: 8))
+    }
+
+    /// A titled card listing recent items, newest first, each with a short meta line.
+    static func entryCard(_ title: String, _ entries: [(meta: String, text: String)], empty: String) -> NSView {
+        var views: [NSView] = [fleetLabel(title, size: 15, weight: .medium, color: KernlTheme.ink, lines: 1)]
+        if entries.isEmpty {
+            views.append(fleetLabel(empty, size: 13, color: KernlTheme.muted, lines: 0))
+        }
+        for entry in entries {
+            views.append(fleetVStack([
+                fleetLabel(entry.meta, size: 11, weight: .medium, color: KernlTheme.muted, lines: 1),
+                fleetLabel(entry.text, size: 13, color: KernlTheme.ink, lines: 4)
+            ], spacing: 3))
+        }
+        return KernlCard(content: fleetVStack(views, spacing: 12))
+    }
+
+    static func shortDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM, HH:mm"
+        return formatter.string(from: date)
     }
 
     static func linkButton(_ title: String, target: AnyObject, action: Selector) -> NSButton {

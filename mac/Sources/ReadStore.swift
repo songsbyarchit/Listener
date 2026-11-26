@@ -5,6 +5,8 @@ struct ReadEntry: Codable, Identifiable {
     var date: Date
     var text: String
     var source: String
+    /// The server voice that read it. Older entries have none.
+    var voice: String?
 }
 
 final class ReadStore {
@@ -16,11 +18,11 @@ final class ReadStore {
 
     private init() { load() }
 
-    func add(text: String, source: String) {
+    func add(text: String, source: String, voice: String? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         entries.insert(ReadEntry(id: UUID().uuidString, date: Date(),
-                                 text: trimmed, source: source), at: 0)
+                                 text: trimmed, source: source, voice: voice), at: 0)
         if entries.count > 500 { entries.removeLast(entries.count - 500) }
         save()
     }
