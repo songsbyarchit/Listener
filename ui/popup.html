@@ -3,14 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LISTNR</title>
+    <title>listnr</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <header class="head">
       <div class="brand">
-        <span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span>LISTNR</span>
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="1" y="1" width="30" height="30" rx="8" fill="#141415" stroke="rgba(247,245,240,.16)" />
+          <rect x="8" y="6" width="16" height="20" rx="3" fill="#F7F5F0" />
+          <rect x="11" y="10" width="10" height="1.6" rx=".8" fill="#141415" />
+          <rect x="11" y="14" width="8" height="1.6" rx=".8" fill="#141415" />
+          <path d="M13 18.5 19 21.5 13 24.5Z" fill="#141415" />
+        </svg>
+        <span>listnr</span>
       </div>
       <div class="status" id="status">
         <span class="dot" id="status-dot"></span>
@@ -18,20 +24,21 @@
       </div>
     </header>
 
-    <p class="lede">Reads the page you are on, without leaving it.</p>
+    <section class="tile">
+      <p class="lede">Reads the page you are on, without leaving it.</p>
+      <button class="read" id="read-page" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M8.5 5.2c0-.8.9-1.3 1.6-.9l9 6.8c.6.4.6 1.4 0 1.8l-9 6.8c-.7.4-1.6-.1-1.6-.9V5.2Z" />
+        </svg>
+        <span id="read-label">Read this page</span>
+      </button>
+      <p class="error" id="error" role="alert" hidden></p>
+      <p class="note" id="server-note" hidden>Start the local server with <code>docker compose up -d</code>.</p>
+    </section>
 
-    <button class="read" id="read-page" type="button">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M8.5 5.2c0-.8.9-1.3 1.6-.9l9 6.8c.6.4.6 1.4 0 1.8l-9 6.8c-.7.4-1.6-.1-1.6-.9V5.2Z" />
-      </svg>
-      <span id="read-label">Read this page</span>
-    </button>
-    <p class="error" id="error" role="alert" hidden></p>
-    <p class="note" id="server-note" hidden>Start the local server with <code>docker compose up -d</code>.</p>
-
-    <section class="settings" aria-label="Playback settings">
+    <section class="tile settings" aria-label="Playback settings">
       <div class="section-title">
-        <span>Playback</span>
+        <span>playback</span>
         <button class="reset" id="reset" type="button">Reset</button>
       </div>
 
@@ -68,11 +75,21 @@
         <input id="follow" type="checkbox" />
         <span>Follow the highlighted sentence</span>
       </label>
+
+      <label class="select-row" for="theme" style="margin-top: 14px; margin-bottom: 0;">
+        <span>Appearance</span>
+        <select id="theme">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
     </section>
 
     <footer class="foot">
       <span>Applies to every page.</span>
       <span class="kbd">Alt+Shift+L</span>
     </footer>
+  <script src="popup.js"></script>
   </body>
 </html>

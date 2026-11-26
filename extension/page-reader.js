@@ -70,7 +70,60 @@
   font-display: swap;
 }
 
-:host { all: initial; }
+:host {
+  all: initial;
+  --lnr-bg: #0B0B0C;
+  --lnr-tile: #1D1D1F;
+  --lnr-raised: #141415;
+  --lnr-ink: #F7F5F0;
+  --lnr-muted: #A8A39A;
+  --lnr-faint: #8A857C;
+  --lnr-line: rgba(247, 245, 240, .13);
+  --lnr-line-soft: rgba(247, 245, 240, .08);
+  --lnr-hover: rgba(255, 255, 255, .08);
+  --lnr-accent: #F25533;
+  --lnr-on-accent: #F7F5F0;
+  --lnr-accent-soft: rgba(221, 85, 47, .15);
+}
+@media (prefers-color-scheme: light) {
+  :host {
+    --lnr-bg: #F7F5F0;
+    --lnr-tile: #FFFFFF;
+    --lnr-raised: #F1EEE7;
+    --lnr-ink: #141415;
+    --lnr-muted: #6E6A64;
+    --lnr-faint: #6E6A64;
+    --lnr-line: rgba(20, 20, 21, .14);
+    --lnr-line-soft: rgba(20, 20, 21, .08);
+    --lnr-hover: rgba(20, 20, 21, .06);
+    --lnr-accent-soft: rgba(242, 85, 51, .12);
+  }
+}
+
+:host([data-theme="light"]) {
+  --lnr-bg: #F7F5F0;
+  --lnr-tile: #FFFFFF;
+  --lnr-raised: #F1EEE7;
+  --lnr-ink: #141415;
+  --lnr-muted: #6E6A64;
+  --lnr-faint: #6E6A64;
+  --lnr-line: rgba(20, 20, 21, .14);
+  --lnr-line-soft: rgba(20, 20, 21, .08);
+  --lnr-hover: rgba(20, 20, 21, .06);
+  --lnr-accent-soft: rgba(242, 85, 51, .12);
+}
+:host([data-theme="dark"]) {
+  --lnr-bg: #0B0B0C;
+  --lnr-tile: #1D1D1F;
+  --lnr-raised: #141415;
+  --lnr-ink: #F7F5F0;
+  --lnr-muted: #A8A39A;
+  --lnr-faint: #8A857C;
+  --lnr-line: rgba(247, 245, 240, .13);
+  --lnr-line-soft: rgba(247, 245, 240, .08);
+  --lnr-hover: rgba(255, 255, 255, .08);
+  --lnr-accent-soft: rgba(221, 85, 47, .15);
+}
 * { box-sizing: border-box; }
 
 .lnr-wrap {
@@ -94,10 +147,10 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  border: 1px solid rgba(255,255,255,.13);
+  border: 1px solid var(--lnr-line);
   border-radius: 999px;
-  background: #0B0B0C;
-  color: #F7F5F0;
+  background: var(--lnr-bg);
+  color: var(--lnr-ink);
   box-shadow: 0 8px 28px rgba(0,0,0,.32);
   overflow: hidden;
   cursor: grab;
@@ -117,7 +170,7 @@
   border: 0;
   background: transparent;
   color: inherit;
-  font: 600 12.5px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 600 14px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: .01em;
   cursor: inherit;
 }
@@ -125,7 +178,7 @@
 .lnr-wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 13px; }
 .lnr-wave i {
   display: block; width: 2px; height: 13px;
-  border-radius: 1px; background: #F25533;
+  border-radius: 1px; background: var(--lnr-accent);
   transform: scaleY(.4); transform-origin: bottom center;
 }
 .lnr-pill:hover .lnr-wave i,
@@ -136,12 +189,12 @@
 .lnr-pill .lnr-wave i:nth-child(4) { animation-delay: .38s; }
 .lnr-close {
   border: 0; background: transparent;
-  color: rgba(255,255,255,.45);
+  color: var(--lnr-faint);
   padding: 0 9px 0 2px;
   font: 400 17px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer; align-self: stretch;
 }
-.lnr-close:hover { color: #F7F5F0; }
+.lnr-close:hover { color: var(--lnr-ink); }
 .lnr-pill-toast {
   position: absolute;
   right: 0;
@@ -150,10 +203,10 @@
   max-width: min(340px, calc(100vw - 36px));
   padding: 10px 12px;
   border-radius: 9px;
-  background: #0B0B0C;
-  color: #F7F5F0;
+  background: var(--lnr-bg);
+  color: var(--lnr-ink);
   box-shadow: 0 10px 32px rgba(0,0,0,.35);
-  font: 500 12px/1.45 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 500 13px/1.45 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   white-space: normal;
   pointer-events: none;
 }
@@ -163,15 +216,15 @@
 .lnr-panel {
   pointer-events: auto;
   position: relative;
-  width: 380px;
+  width: 440px;
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 24px);
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255,255,255,.14);
+  border: 1px solid var(--lnr-line);
   border-radius: 18px;
-  background: #0B0B0C;
-  color: #F7F5F0;
+  background: var(--lnr-bg);
+  color: var(--lnr-ink);
   box-shadow: 0 18px 60px rgba(0,0,0,.42);
   overflow: hidden;
   animation: lnr-rise .18s ease both;
@@ -184,68 +237,68 @@
   justify-content: space-between;
   gap: 10px;
   padding: 11px 12px 9px 15px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid var(--lnr-line-soft);
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
 }
 .lnr-brand {
-  display: flex; align-items: center; gap: 7px;
-  font: 750 10px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  letter-spacing: .2em; text-transform: uppercase;
-  color: #F7F5F0;
+  display: flex; align-items: center; gap: 8px;
+  font: 700 14px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: -.01em;
+  color: var(--lnr-ink);
 }
-.lnr-brand .lnr-wave { height: 11px; }
-.lnr-brand .lnr-wave i { height: 11px; }
+.lnr-mark { width: 27px; height: 27px; display: block; flex: 0 0 27px; }
 .lnr-head-actions { display: flex; gap: 2px; }
 .lnr-icon {
   width: 28px; height: 28px;
   display: grid; place-items: center;
   border: 0; border-radius: 7px;
-  background: transparent; color: rgba(255,255,255,.55);
+  background: transparent; color: var(--lnr-muted);
   cursor: pointer; padding: 0;
 }
-.lnr-icon:hover { background: rgba(255,255,255,.08); color: #F7F5F0; }
+.lnr-icon:hover { background: var(--lnr-hover); color: var(--lnr-ink); }
 .lnr-icon svg { width: 15px; height: 15px; }
-.lnr-progress { height: 2px; background: rgba(255,255,255,.08); flex: 0 0 auto; }
-.lnr-progress span { display: block; height: 100%; width: 0%; background: #F25533; transition: width .35s ease; }
+.lnr-progress { height: 2px; background: var(--lnr-hover); flex: 0 0 auto; }
+.lnr-progress span { display: block; height: 100%; width: 0%; background: var(--lnr-accent); transition: width .35s ease; }
 
-.lnr-body { padding: 12px 15px 13px; min-height: 0; overflow-y: auto; flex: 1 1 auto; }
+.lnr-body {
+  margin: 10px 10px 0;
+  padding: 16px;
+  border: 1px solid var(--lnr-line);
+  border-radius: 16px;
+  background: var(--lnr-tile);
+  min-height: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
 .lnr-title {
-  margin: 0 0 9px;
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -.01em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  margin: 0 0 10px;
+  font-family: "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -.015em;
 }
 .lnr-sentence {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: 15px;
-  line-height: 1.5;
-  color: #F7F5F0;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 1.5em;
+  font-family: "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--lnr-ink);
+  min-height: 1.55em;
 }
 .lnr-meta {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   margin-top: 8px;
-  color: #A8A39A;
+  color: var(--lnr-muted);
   font: 500 11px/1.35 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 .lnr-controls {
   display: flex; align-items: center; justify-content: center; gap: 4px;
   padding: 10px 12px 12px;
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid var(--lnr-line-soft);
 }
 .lnr-controls .lnr-icon { width: 32px; height: 32px; }
 .lnr-play {
@@ -253,8 +306,8 @@
   margin: 0 3px;
   display: grid; place-items: center;
   border: 0; border-radius: 50%;
-  background: #F25533;
-  color: #F7F5F0;
+  background: var(--lnr-accent);
+  color: var(--lnr-on-accent);
   cursor: pointer;
   box-shadow: 0 5px 18px rgba(200,70,35,.32);
   transition: transform .15s, background .15s;
@@ -265,21 +318,21 @@
   height: 30px;
   margin-left: 4px;
   padding: 0 9px;
-  border: 1px solid rgba(255,255,255,.13);
+  border: 1px solid var(--lnr-line);
   border-radius: 999px;
   background: transparent;
-  color: #F7F5F0;
-  font: 650 12px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--lnr-ink);
+  font: 650 13px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.lnr-speed:hover { background: rgba(255,255,255,.08); }
+.lnr-speed:hover { background: var(--lnr-hover); }
 .lnr-play:disabled, .lnr-icon:disabled { opacity: .4; cursor: default; }
 
 /* Settings popover inside the panel */
 .lnr-settings {
-  border-top: 1px solid rgba(255,255,255,.08);
-  background: #141415;
+  border-top: 1px solid var(--lnr-line-soft);
+  background: var(--lnr-raised);
   padding: 12px 15px 14px;
   max-height: 46vh;
   overflow-y: auto;
@@ -290,14 +343,14 @@
 .lnr-settings label {
   display: block;
   margin: 0 0 9px;
-  color: #A8A39A;
-  font: 600 10px/1.2 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  color: var(--lnr-muted);
+  font: 600 11px/1.2 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: .01em;
+  text-transform: none;
 }
 .lnr-settings label b {
   float: right;
-  color: #F7F5F0;
+  color: var(--lnr-ink);
   font-weight: 650;
   letter-spacing: 0;
   text-transform: none;
@@ -307,11 +360,11 @@
   width: 100%;
   height: 30px;
   margin-top: 5px;
-  border: 1px solid rgba(255,255,255,.14);
+  border: 1px solid var(--lnr-line);
   border-radius: 7px;
-  background: #0B0B0C;
-  color: #F7F5F0;
-  font: 500 12px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--lnr-bg);
+  color: var(--lnr-ink);
+  font: 500 13px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   padding: 0 8px;
   outline: none;
 }
@@ -325,27 +378,27 @@
   cursor: pointer;
 }
 .lnr-settings input[type="range"]::-webkit-slider-runnable-track {
-  height: 3px; border-radius: 2px; background: rgba(255,255,255,.14);
+  height: 3px; border-radius: 2px; background: var(--lnr-line);
 }
 .lnr-settings input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 13px; height: 13px;
   margin-top: -5px;
   border-radius: 50%;
-  background: #F25533;
-  border: 2px solid #141415;
+  background: var(--lnr-accent);
+  border: 2px solid var(--lnr-raised);
 }
 .lnr-presets { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 12px; }
 .lnr-presets button {
-  border: 1px solid rgba(255,255,255,.13);
+  border: 1px solid var(--lnr-line);
   border-radius: 999px;
   background: transparent;
-  color: #A8A39A;
+  color: var(--lnr-muted);
   padding: 4px 7px;
-  font: 600 10px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 600 11px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer;
 }
-.lnr-presets button.is-on { background: #F7F5F0; border-color: #F7F5F0; color: #0B0B0C; }
+.lnr-presets button.is-on { background: var(--lnr-ink); border-color: var(--lnr-ink); color: var(--lnr-bg); }
 .lnr-follow {
   display: flex !important;
   align-items: center;
@@ -353,12 +406,12 @@
   margin: 4px 0 0 !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
-  font-size: 11px !important;
-  color: #A8A39A !important;
+  font-size: 12px !important;
+  color: var(--lnr-muted) !important;
   cursor: pointer;
 }
 .lnr-follow input { accent-color: #F25533; }
-.lnr-hint { margin: 9px 0 0; color: #8A857C; font: 500 10px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
+.lnr-hint { margin: 9px 0 0; color: var(--lnr-faint); font: 500 12px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* Pin-position picker */
 .lnr-dock {
@@ -373,33 +426,33 @@
   align-items: center;
   gap: 5px;
   padding: 6px 3px;
-  border: 1px solid rgba(255,255,255,.13);
+  border: 1px solid var(--lnr-line);
   border-radius: 8px;
   background: transparent;
-  color: #A8A39A;
-  font: 600 10px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--lnr-muted);
+  font: 600 11px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
 }
-.lnr-dock button:hover { background: rgba(255,255,255,.06); color: #F7F5F0; }
+.lnr-dock button:hover { background: var(--lnr-hover); color: var(--lnr-ink); }
 .lnr-dock button.is-on {
-  border-color: #F7F5F0;
-  background: rgba(244,238,228,.1);
-  color: #F7F5F0;
+  border-color: var(--lnr-ink);
+  background: var(--lnr-hover);
+  color: var(--lnr-ink);
 }
 .lnr-dock button i {
   position: relative;
   display: block;
   width: 28px;
   height: 18px;
-  border: 1px solid rgba(255,255,255,.3);
+  border: 1px solid var(--lnr-line);
   border-radius: 3px;
 }
 .lnr-dock button i::after {
   content: "";
   position: absolute;
-  background: #F25533;
+  background: var(--lnr-accent);
   border-radius: 1.5px;
 }
 .lnr-dock button[data-dock-btn="right"] i::after { right: 1px; top: 1px; bottom: 1px; width: 9px; }
@@ -410,9 +463,9 @@
   margin: 0 15px 12px;
   padding: 8px 10px;
   border-radius: 7px;
-  background: rgba(221,85,47,.15);
+  background: var(--lnr-accent-soft);
   color: #F25533;
-  font: 500 11px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 500 12px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .lnr-panel-toast[hidden] { display: none; }
 
@@ -475,6 +528,7 @@
   const SIZE_KEY = 'listnr:panel-size';
   const POS_KEY = 'listnr:panel-pos';
   const PREF_KEY = 'listnr:prefs';
+  const THEME_KEY = 'listnr:theme';
   const DOCK_EDGES = new Set(['left', 'bottom', 'right']);
   const LEGACY_PILL_POS_KEY = 'listnr:pill-position';
   const PILL_MARGIN = 12;
@@ -495,6 +549,23 @@
     ensureUI();
     loadDock();
     loadPrefs();
+    loadTheme();
+  }
+
+  function loadTheme() {
+    try {
+      chrome.storage.local.get(THEME_KEY).then((stored) => {
+        applyTheme(stored?.[THEME_KEY] || 'system');
+      }).catch(() => {});
+    } catch {
+      // Restricted pages keep the system theme.
+    }
+  }
+
+  function applyTheme(value) {
+    if (!host) return;
+    if (value === 'light' || value === 'dark') host.dataset.theme = value;
+    else delete host.dataset.theme;
   }
 
   // Playback settings live in chrome.storage.local so the toolbar popup and
@@ -1192,20 +1263,26 @@
 
     shadow.innerHTML = `
       <div class="lnr-wrap">
-        <div class="lnr-pill" role="group" aria-label="LISTNR" title="Drag to move · Click Listen to read this page">
-          <button class="lnr-main" type="button" title="Listen to this page with LISTNR · drag the pill to move it">
+        <div class="lnr-pill" role="group" aria-label="listnr" title="Drag to move · Click Listen to read this page">
+          <button class="lnr-main" type="button" title="Listen to this page with listnr · drag the pill to move it">
             <span class="lnr-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-            <span class="lnr-label">Listen</span>
+            <span class="lnr-label">listen</span>
           </button>
-          <button class="lnr-close" type="button" aria-label="Hide LISTNR on this page" title="Hide on this page">×</button>
+          <button class="lnr-close" type="button" aria-label="Hide listnr on this page" title="Hide on this page">×</button>
           <div class="lnr-pill-toast" role="status" aria-live="polite" hidden></div>
         </div>
 
-        <section class="lnr-panel" aria-label="LISTNR in-page player" hidden>
+        <section class="lnr-panel" aria-label="listnr in-page player" hidden>
           <header class="lnr-head">
             <div class="lnr-brand">
-              <span class="lnr-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-              <span>LISTNR</span>
+              <svg class="lnr-mark" viewBox="0 0 32 32" aria-hidden="true">
+                <rect x="1" y="1" width="30" height="30" rx="8" fill="#141415" stroke="rgba(247,245,240,.16)" />
+                <rect x="8" y="6" width="16" height="20" rx="3" fill="#F7F5F0" />
+                <rect x="11" y="10" width="10" height="1.6" rx=".8" fill="#141415" />
+                <rect x="11" y="14" width="8" height="1.6" rx=".8" fill="#141415" />
+                <path d="M13 18.5 19 21.5 13 24.5Z" fill="#141415" />
+              </svg>
+              <span>listnr</span>
             </div>
             <div class="lnr-head-actions">
               <button class="lnr-icon lnr-min" type="button" title="Minimize player" aria-label="Minimize player">${ICON.minus}</button>
@@ -1242,7 +1319,7 @@
             <label>Sentence pause <b class="lnr-sentence-gap-value">160 ms</b><input class="lnr-sentence-gap" type="range" min="0" max="600" step="20" value="160"></label>
             <label>Paragraph pause <b class="lnr-paragraph-gap-value">600 ms</b><input class="lnr-paragraph-gap" type="range" min="0" max="1500" step="50" value="600"></label>
             <label class="lnr-follow"><input class="lnr-follow-input" type="checkbox" ${state.follow ? 'checked' : ''}> Follow highlighted text</label>
-            <p class="lnr-hint">The page text is highlighted as it plays. Drag the player by its header to move it anywhere; drag the pill to snap it to a page edge. Drag the player's edges or corners to resize. Playback settings are shared with the LISTNR toolbar popup.</p>
+            <p class="lnr-hint">The page text is highlighted as it plays. Drag the player by its header to move it anywhere; drag the pill to snap it to a page edge. Drag the player's edges or corners to resize. Playback settings are shared with the listnr toolbar popup.</p>
           </div>
           <div class="lnr-panel-toast" role="status" aria-live="polite" hidden></div>
           <div class="lnr-resize" data-resize="n" aria-hidden="true"></div>
@@ -1266,7 +1343,6 @@
       panel: shadow.querySelector('.lnr-panel'),
       head: shadow.querySelector('.lnr-head'),
       resizers: [...shadow.querySelectorAll('.lnr-resize')],
-      brandWave: shadow.querySelector('.lnr-brand .lnr-wave'),
       title: shadow.querySelector('.lnr-title'),
       sentence: shadow.querySelector('.lnr-sentence'),
       position: shadow.querySelector('.lnr-position'),
@@ -1396,8 +1472,9 @@
 
     // The toolbar popup writes the same preferences; mirror them live.
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== 'local' || !changes[PREF_KEY]) return;
-      applyPrefs(normalizePrefs(changes[PREF_KEY].newValue));
+      if (area !== 'local') return;
+      if (changes[PREF_KEY]) applyPrefs(normalizePrefs(changes[PREF_KEY].newValue));
+      if (changes[THEME_KEY]) applyTheme(changes[THEME_KEY].newValue || 'system');
     });
 
     chrome.runtime.onMessage.addListener((message) => {
@@ -1422,7 +1499,7 @@
     if (!page.html && !page.text.trim()) {
       state.importing = false;
       setPillLoading(false);
-      showPillToast('LISTNR could not find readable text on this page.');
+      showPillToast('listnr could not find readable text on this page.');
       return;
     }
 
@@ -1602,7 +1679,7 @@
     if (!voices.length) {
       const option = document.createElement('option');
       option.value = '';
-      option.textContent = 'Configure a voice on the LISTNR server';
+      option.textContent = 'Configure a voice on the listnr server';
       refs.voice.append(option);
       return;
     }
@@ -1732,7 +1809,7 @@
       updateUI();
       showPanelToast(
         error.code === 'tts_unavailable'
-          ? 'Voice service unavailable. Check the LISTNR server configuration, then press play again.'
+          ? 'Voice service unavailable. Check the listnr server configuration, then press play again.'
           : error.message || 'Could not load this sentence.',
         8000
       );

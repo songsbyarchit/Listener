@@ -32,7 +32,7 @@ async function importPage(message, sender) {
     return {
       ok: false,
       error:
-        'The local LISTNR server is offline. Run docker compose up -d in ~/Downloads/Listener.'
+        'The local listnr server is offline. Run docker compose up -d in ~/Downloads/Listener.'
     };
   }
 
@@ -80,7 +80,7 @@ async function fetchAudioForTab(message) {
     return {
       ok: false,
       code: 'tts_unavailable',
-      error: 'The voice service is unavailable. Check the LISTNR server configuration and try again.'
+      error: 'The voice service is unavailable. Check the listnr server configuration and try again.'
     };
   }
 
@@ -121,7 +121,7 @@ async function fetchVoiceList() {
       defaultVoice: payload.defaultVoice || ''
     };
   } catch {
-    return { ok: false, error: 'The local LISTNR server is offline.' };
+    return { ok: false, error: 'The local listnr server is offline.' };
   }
 }
 
@@ -166,7 +166,7 @@ async function readPageInTab(tabId) {
     // Restricted page (chrome://, Web Store, PDF viewer, etc.).
     return {
       ok: false,
-      error: 'LISTNR cannot read this page. Open a normal http(s) page and try again.'
+      error: 'listnr cannot read this page. Open a normal http(s) page and try again.'
     };
   }
 }

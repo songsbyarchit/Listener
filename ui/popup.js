@@ -41,17 +41,25 @@ const els = {
   paragraphGap: document.getElementById('paragraph-gap'),
   paragraphGapValue: document.getElementById('paragraph-gap-value'),
   follow: document.getElementById('follow'),
+  theme: document.getElementById('theme'),
   reset: document.getElementById('reset')
 };
 
 let prefs = { ...DEFAULTS };
 let defaultVoice = DEFAULTS.voice;
+let theme = 'system';
 let saveTimer = null;
 
 init();
 
 async function init() {
   prefs = normalizePrefs(await readStoredPrefs());
+  try {
+    theme = (await chrome.storage.local.get('listnr:theme'))['listnr:theme'] || 'system';
+  } catch {
+    theme = 'system';
+  }
+  applyTheme(theme);
   fillVoices(FALLBACK_VOICES);
   render();
   bind();
@@ -100,6 +108,7 @@ function render() {
   els.paragraphGap.value = String(prefs.paragraphGap);
   els.paragraphGapValue.textContent = `${prefs.paragraphGap} ms`;
   els.follow.checked = prefs.follow;
+  els.theme.value = theme;
   if (els.voice.options.length) els.voice.value = prefs.voice;
 }
 
@@ -138,6 +147,12 @@ function bind() {
   els.follow.addEventListener('change', () => {
     prefs.follow = els.follow.checked;
     savePrefs();
+  });
+
+  els.theme.addEventListener('change', async () => {
+    theme = els.theme.value;
+    applyTheme(theme);
+    await chrome.storage.local.set({ 'listnr:theme': theme });
   });
 
   els.reset.addEventListener('click', () => {
@@ -184,12 +199,20 @@ async function readThisPage() {
       window.close();
       return;
     }
-    showError(result?.error || 'LISTNR could not start on this page.');
+    showError(result?.error || 'listnr could not start on this page.');
   } catch {
-    showError('LISTNR could not reach the extension. Reload it and try again.');
+    showError('listnr could not reach the extension. Reload it and try again.');
   }
   els.read.disabled = false;
   els.readLabel.textContent = 'Read this page';
+}
+
+function applyTheme(value) {
+  if (value === 'light' || value === 'dark') {
+    document.documentElement.dataset.theme = value;
+  } else {
+    delete document.documentElement.dataset.theme;
+  }
 }
 
 function showError(message) {

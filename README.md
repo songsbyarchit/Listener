@@ -1,4 +1,4 @@
-# LISTNR
+# listnr
 
 **A local-first page reader for Chrome — it reads the page you are on, without leaving it.**
 
@@ -9,6 +9,18 @@ No account. No subscription. No telemetry. Local voices by default — and if yo
 > **This version is extension-only.** There is no separate library/reader window or local web app: the toolbar popup and the in-page player are the whole UI. The standalone app may return in a later version.
 
 ![LISTNR in-page player](docs/screenshots/page-player.png)
+
+## System-wide listnr
+
+There is also a menu-bar app in `mac/`. Select text in any app and press
+**⌥L**; it reads with the Mac's British English voice and shows a small
+non-activating bubble with Pause and Stop. The Chrome extension remains the
+page reader with highlighting and Kokoro or hosted voices.
+
+```bash
+cd mac
+make run
+```
 
 ## Quick start
 
