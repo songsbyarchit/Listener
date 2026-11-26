@@ -1,15 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "LISTNR — Listener",
+  "name": "LISTNR \u2014 Listener",
   "short_name": "LISTNR",
   "version": "0.2.2",
-  "description": "A local-first document reader with a Chrome extension UI, SQLite library, and local Kokoro speech.",
+  "description": "Reads the page you are on out loud, with a local or hosted voice. Playback settings live in the toolbar popup.",
   "minimum_chrome_version": "116",
   "permissions": [
     "tabs",
     "storage",
-    "sidePanel",
-    "scripting"
+    "scripting",
+    "activeTab"
   ],
   "host_permissions": [
     "http://127.0.0.1/*",
@@ -18,13 +18,15 @@
   "background": {
     "service_worker": "extension/background.js"
   },
-  "side_panel": {
-    "default_path": "ui/panel.html"
-  },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["extension/page-reader.js"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "extension/page-reader.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
@@ -39,7 +41,8 @@
     }
   },
   "action": {
-    "default_title": "Open LISTNR",
+    "default_title": "LISTNR \u2014 settings and page reading",
+    "default_popup": "ui/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -52,5 +55,15 @@
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "fonts/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }
