@@ -59,7 +59,7 @@ async function init() {
   try {
     const stored = (await chrome.storage.local.get('listnr:theme'))['listnr:theme'];
     theme = stored || 'system';
-    const remote = await chrome.runtime.sendMessage({ type: 'listnr:get-fleet-appearance' });
+    const remote = await chrome.runtime.sendMessage({ type: 'listnr:get-kernl-appearance' });
     if (remote?.ok && remote.appearance) theme = remote.appearance;
   } catch {
     theme = 'system';
@@ -166,7 +166,7 @@ function bind() {
     applyTheme(theme);
     await chrome.storage.local.set({ 'listnr:theme': theme });
     try {
-      await chrome.runtime.sendMessage({ type: 'listnr:set-fleet-appearance', appearance: theme });
+      await chrome.runtime.sendMessage({ type: 'listnr:set-kernl-appearance', appearance: theme });
     } catch {
       // The local server may be offline; the stored theme still applies.
     }

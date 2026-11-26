@@ -566,7 +566,7 @@
       chrome.storage.local.get(THEME_KEY).then((stored) => {
         applyTheme(stored?.[THEME_KEY] || 'system');
       }).catch(() => {});
-      chrome.runtime.sendMessage({ type: 'listnr:get-fleet-appearance' })
+      chrome.runtime.sendMessage({ type: 'listnr:get-kernl-appearance' })
         .then((result) => {
           if (result?.ok && result.appearance) applyTheme(result.appearance);
         })

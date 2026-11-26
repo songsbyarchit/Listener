@@ -747,22 +747,22 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     response.send(buffer);
   });
 
-  const fleetAppearancePath = path.join(os.homedir(), '.fleet', 'appearance');
+  const kernlAppearancePath = path.join(os.homedir(), '.fleet', 'appearance');
 
-  app.get('/api/fleet/appearance', async (_request, response) => {
-    const value = await fs.promises.readFile(fleetAppearancePath, 'utf8').catch(() => 'system');
+  app.get('/api/kernl/appearance', async (_request, response) => {
+    const value = await fs.promises.readFile(kernlAppearancePath, 'utf8').catch(() => 'system');
     const clean = ['system', 'light', 'dark'].includes(value.trim()) ? value.trim() : 'system';
     response.json({ ok: true, appearance: clean });
   });
 
-  app.patch('/api/fleet/appearance', async (request, response) => {
+  app.patch('/api/kernl/appearance', async (request, response) => {
     const value = String(request.body?.appearance || '').trim().toLowerCase();
     if (!['system', 'light', 'dark'].includes(value)) {
       response.status(400).json(errorBody(badRequest('Appearance must be system, light or dark.')));
       return;
     }
-    await fs.promises.mkdir(path.dirname(fleetAppearancePath), { recursive: true, mode: 0o700 });
-    await fs.promises.writeFile(fleetAppearancePath, value + '\n', { mode: 0o600 });
+    await fs.promises.mkdir(path.dirname(kernlAppearancePath), { recursive: true, mode: 0o700 });
+    await fs.promises.writeFile(kernlAppearancePath, value + '\n', { mode: 0o600 });
     response.json({ ok: true, appearance: value });
   });
 

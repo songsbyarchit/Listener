@@ -125,9 +125,9 @@ async function fetchVoiceList() {
   }
 }
 
-async function fetchFleetAppearance() {
+async function fetchKernlAppearance() {
   try {
-    const response = await fetch(`${SERVER_URL}/api/fleet/appearance`, {
+    const response = await fetch(`${SERVER_URL}/api/kernl/appearance`, {
       signal: AbortSignal.timeout(5000)
     });
     const payload = await response.json().catch(() => null);
@@ -137,9 +137,9 @@ async function fetchFleetAppearance() {
   }
 }
 
-async function saveFleetAppearance(value) {
+async function saveKernlAppearance(value) {
   try {
-    const response = await fetch(`${SERVER_URL}/api/fleet/appearance`, {
+    const response = await fetch(`${SERVER_URL}/api/kernl/appearance`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ appearance: value }),
@@ -224,13 +224,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === 'listnr:get-fleet-appearance') {
-    fetchFleetAppearance().then(sendResponse).catch(() => sendResponse({ ok: false, appearance: 'system' }));
+  if (message.type === 'listnr:get-kernl-appearance') {
+    fetchKernlAppearance().then(sendResponse).catch(() => sendResponse({ ok: false, appearance: 'system' }));
     return true;
   }
 
-  if (message.type === 'listnr:set-fleet-appearance') {
-    saveFleetAppearance(String(message.appearance || 'system'))
+  if (message.type === 'listnr:set-kernl-appearance') {
+    saveKernlAppearance(String(message.appearance || 'system'))
       .then(sendResponse)
       .catch(() => sendResponse({ ok: false }));
     return true;
