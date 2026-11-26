@@ -45,10 +45,24 @@ enum KernlAppearance {
         }
     }
 
+    private static var lastSeen = ""
+
     @discardableResult
     static func observe(_ handler: @escaping () -> Void) -> NSObjectProtocol {
-        DistributedNotificationCenter.default().addObserver(
+        lastSeen = value()
+        let token = DistributedNotificationCenter.default().addObserver(
             forName: notification, object: nil, queue: .main
-        ) { _ in handler() }
+        ) { _ in
+            lastSeen = value()
+            handler()
+        }
+        let timer = Timer(timeInterval: 4.0, repeats: true) { _ in
+            let current = value()
+            guard current != lastSeen else { return }
+            lastSeen = current
+            handler()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        return token
     }
 }
