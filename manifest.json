@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "listnr \u2014 listener",
   "short_name": "listnr",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Reads the page you are on out loud, with a local or hosted voice. Playback settings live in the toolbar popup.",
   "minimum_chrome_version": "116",
   "permissions": [

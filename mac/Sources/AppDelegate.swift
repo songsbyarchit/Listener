@@ -37,6 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hud.progressProvider = { [weak self] in self?.speaker.progress }
         hud.onSpeed = { [weak self] in self?.speaker.cycleRate() ?? 1 }
         hud.speedProvider = { [weak self] in self?.speaker.rate ?? 1 }
+        hud.onSettings = { [weak self] in self?.openSettings() }
+        hud.onMute = { [weak self] in
+            guard let self else { return false }
+            self.speaker.muted.toggle()
+            return self.speaker.muted
+        }
         speaker.onState = { [weak self] state in
             guard let self else { return }
             self.pauseItem.title = state == .paused ? "Continue" : "Pause"
@@ -65,6 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.homeWindow.showSettings()
             }
+        } else if CommandLine.arguments.contains("--test-voice") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in self?.testVoice() }
         } else if CommandLine.arguments.contains("--open-main") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.openWindow()
@@ -146,6 +154,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         speak(text, source: "screen")
     }
 
+    // MARK: Follow the selection
+
+    private var selectionTimer: Timer?
+    /// The selection that was on screen when this read started.
+    private var followedSelection = ""
+
+    /// While reading, highlighting different text switches the player to it,
+    /// so listnr reads what you are looking at now, not what it started with.
+    private func startFollowingSelection() {
+        selectionTimer?.invalidate()
+        let timer = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in self?.checkSelection() }
+        RunLoop.main.add(timer, forMode: .common)
+        selectionTimer = timer
+    }
+
+    private func checkSelection() {
+        guard speaker.isActive else {
+            selectionTimer?.invalidate()
+            return
+        }
+        guard let selected = SelectionReader.selectedText()?.trimmingCharacters(in: .whitespacesAndNewlines),
+              selected.count >= 3,
+              selected != followedSelection.trimmingCharacters(in: .whitespacesAndNewlines),
+              selected != lastText.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+        speak(selected, source: "selection")
+    }
+
+    /// Reads a fixed sample line, so a voice can be heard before reading real text.
+    @objc func testVoice() {
+        if speaker.isActive { speaker.stop() }
+        speak("This is listnr reading in your chosen voice. It highlights each word as it goes, and you can change the speed at any time.",
+              source: "test")
+    }
+
     @objc private func readClipboard() {
         guard let text = NSPasteboard.general.string(forType: .string),
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -157,6 +199,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func speak(_ text: String, source: String = "selection") {
         lastText = text
+        followedSelection = SelectionReader.selectedText() ?? ""
+        startFollowingSelection()
         ReadStore.shared.add(text: text, source: source,
                              voice: ListnrVoiceCatalog.shared.currentVoice()?.id)
         hud.show(text: text, status: "reading")

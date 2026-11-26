@@ -55,6 +55,13 @@ final class Speaker: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDelegat
         }
     }
 
+    /// Silences the voice while the read and the highlight carry on.
+    var muted = false {
+        didSet {
+            player?.volume = muted ? 0 : 1
+        }
+    }
+
     /// Moves to the next speed and returns it.
     @discardableResult
     func cycleRate() -> Float {
@@ -205,6 +212,7 @@ final class Speaker: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDelegat
             player.delegate = self
             player.enableRate = true
             player.rate = rate
+            player.volume = muted ? 0 : 1
             player.prepareToPlay()
             durations[index] = player.duration
             self.player = player
@@ -242,6 +250,7 @@ final class Speaker: NSObject, AVAudioPlayerDelegate, AVSpeechSynthesizerDelegat
         let utterance = AVSpeechUtterance(string: rest)
         utterance.voice = preferred
         utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate, 0.5 * rate)
+        utterance.volume = muted ? 0 : 1
         synth.speak(utterance)
         onState?(.speaking)
     }

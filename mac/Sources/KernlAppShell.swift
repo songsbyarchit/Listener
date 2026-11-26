@@ -207,8 +207,17 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         show(section: 0, activate: false)
     }
 
+    /// Rebuilds the page after a setting changes, keeping the scroll position
+    /// so the page does not jump back to the top.
     func reloadCurrent() {
+        let offset = (contentHost.subviews.first as? NSScrollView)?.contentView.bounds.origin
         show(section: selected, activate: false)
+        guard let offset, let scroll = contentHost.subviews.first as? NSScrollView else { return }
+        contentHost.layoutSubtreeIfNeeded()
+        let documentHeight = scroll.documentView?.frame.height ?? 0
+        let maxY = max(0, documentHeight - scroll.contentView.bounds.height)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: min(offset.y, maxY)))
+        scroll.reflectScrolledClipView(scroll.contentView)
     }
 
     func show(section: Int, activate: Bool = true) {

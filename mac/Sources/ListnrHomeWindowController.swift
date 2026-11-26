@@ -159,7 +159,7 @@ final class ListnrHomeWindowController {
     @objc private func voiceChanged(_ sender: NSPopUpButton) {
         guard let id = sender.selectedItem?.representedObject as? String else { return }
         ListnrPreferences.shared.voiceID = id
-        shell.show(section: 1)
+        shell.reloadCurrent()
     }
     @objc private func readSelection() { onRead?() }
     @objc private func readClipboard() { onReadClipboard?() }

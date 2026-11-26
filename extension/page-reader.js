@@ -303,6 +303,10 @@
   color: var(--lnr-ink);
   min-height: 1.55em;
 }
+/* Read-along: the sentence being read in ink with its current word lit,
+   then the sentences after it in muted text, filling the box. */
+.lnr-sentence .lnr-next { color: var(--lnr-muted); }
+.lnr-sentence .is-word { color: var(--lnr-accent); font-weight: 650; }
 .lnr-meta {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   margin-top: 8px;
@@ -1399,6 +1403,7 @@
       // Older engines.
     }
     state.audio.addEventListener('ended', onAudioEnded);
+    state.audio.addEventListener('timeupdate', highlightSpokenWord);
 
     document.documentElement.append(host);
     applyPillPosition({ animate: false });
@@ -1935,11 +1940,68 @@
     }
   }
 
+  // Words are timed by their length plus the pause a voice takes after
+  // punctuation, mapped onto the real playback position of the sentence.
+  function wordWeights(words) {
+    return words.map((word) => {
+      let weight = word.length + 2;
+      if (/[.!?]$/.test(word)) weight += 8;
+      else if (/[,;:]$/.test(word)) weight += 4;
+      return weight;
+    });
+  }
+
+  function renderReadAlong() {
+    const box = refs.sentence;
+    if (!box) return;
+    const current = state.segments[state.cursor];
+    box.replaceChildren();
+    state.readAlong = null;
+    if (!current?.text) return;
+    const words = current.text.split(/\s+/).filter(Boolean);
+    const now = document.createElement('span');
+    now.className = 'lnr-now';
+    const spans = words.map((word, index) => {
+      const span = document.createElement('span');
+      span.textContent = word;
+      now.append(span);
+      if (index < words.length - 1) now.append(' ');
+      return span;
+    });
+    box.append(now);
+    // Fill the rest of the box with what comes next.
+    const next = document.createElement('span');
+    next.className = 'lnr-next';
+    let characters = 0;
+    for (let i = state.cursor + 1; i < state.segments.length && characters < 1200; i += 1) {
+      const text = state.segments[i]?.text || '';
+      next.append(' ' + text);
+      characters += text.length;
+    }
+    if (characters) box.append(next);
+    const weights = wordWeights(words);
+    let running = 0;
+    state.readAlong = { spans, ends: weights.map((w) => (running += w)), total: running, lit: -1, index: state.cursor };
+    box.scrollTop = 0;
+  }
+
+  function highlightSpokenWord() {
+    const along = state.readAlong;
+    const audio = state.audio;
+    if (!along || !audio || !audio.duration || !Number.isFinite(audio.duration)) return;
+    const target = clamp(audio.currentTime / audio.duration, 0, 1) * along.total;
+    let index = along.ends.findIndex((end) => end >= target);
+    if (index < 0) index = along.spans.length - 1;
+    if (index === along.lit) return;
+    if (along.lit >= 0) along.spans[along.lit]?.classList.remove('is-word');
+    along.spans[index]?.classList.add('is-word');
+    along.lit = index;
+  }
+
   function setCursor(index) {
     if (!state.segments.length) return;
     state.cursor = clamp(index, 0, state.segments.length - 1);
-    const segment = state.segments[state.cursor];
-    refs.sentence.textContent = segment?.text || '';
+    renderReadAlong();
     refs.position.textContent = `Sentence ${state.cursor + 1} of ${state.segments.length}`;
     safeHighlight(state.cursor);
   }
@@ -1949,10 +2011,12 @@
 
     const rate = Number(state.settings.rate) || 1;
     refs.title.textContent = state.doc.title || 'Web page';
-    refs.sentence.textContent =
-      state.playback === 'loading' && !state.segments[state.cursor]?.text
-        ? 'Preparing audio…'
-        : state.segments[state.cursor]?.text || '';
+    if (state.playback === 'loading' && !state.segments[state.cursor]?.text) {
+      refs.sentence.textContent = 'Preparing audio…';
+      state.readAlong = null;
+    } else if (state.readAlong?.index !== state.cursor) {
+      renderReadAlong();
+    }
     refs.position.textContent = `Sentence ${state.cursor + 1} of ${state.segments.length}`;
 
     const count = state.segments.length || 1;
