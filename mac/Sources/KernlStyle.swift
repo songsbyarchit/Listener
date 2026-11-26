@@ -470,7 +470,7 @@ final class KernlRestorePill {
     private var hideWork: DispatchWorkItem?
 
     init(title: String) {
-        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 132, height: 36),
+        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 96, height: 36),
                         styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false)
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = true
@@ -485,7 +485,7 @@ final class KernlRestorePill {
         panel.contentView = card
         let button = NSButton(title: title, target: nil, action: nil)
         button.isBordered = false
-        button.image = NSImage(systemSymbolName: "arrow.up.left", accessibilityDescription: nil)
+        button.image = NSImage(systemSymbolName: "arrow.uturn.backward", accessibilityDescription: nil)
         button.imagePosition = .imageLeading
         button.attributedTitle = NSAttributedString(string: title, attributes: [
             .font: Type.sans(13, .medium), .foregroundColor: KernlTheme.ink
@@ -561,5 +561,70 @@ enum KernlPlacement {
         }
         frame.origin.y = min(frame.origin.y, visible.maxY - size.height - margin)
         return frame.origin
+    }
+}
+
+/// A quiet "Closing in 3s" at the bottom of a quick window, with a thin line
+/// that drains to nothing as the window is about to leave. Any interaction
+/// cancels it.
+final class KernlCountdown: NSView {
+    private let label = NSTextField(labelWithString: "")
+    private let line = CALayer()
+    private var timer: Timer?
+    private var endsAt = Date()
+    private var duration: Double = 1
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        label.font = Type.sans(11)
+        label.textColor = KernlTheme.muted
+        label.alignment = .right
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        layer?.addSublayer(line)
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 18),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor),
+            label.topAnchor.constraint(equalTo: topAnchor)
+        ])
+        isHidden = true
+        setAccessibilityElement(false)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func start(seconds: Double) {
+        timer?.invalidate()
+        duration = max(0.5, seconds)
+        endsAt = Date().addingTimeInterval(duration)
+        isHidden = false
+        tick()
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in self?.tick() }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    func cancel() {
+        timer?.invalidate()
+        timer = nil
+        isHidden = true
+    }
+
+    private func tick() {
+        let remaining = max(0, endsAt.timeIntervalSinceNow)
+        label.stringValue = "Closing in \(Int(remaining.rounded(.up)))s"
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        line.backgroundColor = KernlTheme.accent.withAlphaComponent(0.55).cgColor
+        line.frame = CGRect(x: 0, y: 0, width: bounds.width * CGFloat(remaining / duration), height: 2)
+        CATransaction.commit()
+        if remaining <= 0 { timer?.invalidate() }
+    }
+
+    override func layout() {
+        super.layout()
+        tick()
     }
 }
