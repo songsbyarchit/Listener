@@ -3,6 +3,7 @@ import AppKit
 /// The small in-app mark. Same black tile and cream glyph as the app icon,
 /// drawn small enough to sit beside a lowercase name.
 enum KernlAppMark {
+    case kernl
     case speakr
     case listnr
     case writr
@@ -15,6 +16,7 @@ final class KernlMarkView: NSView {
     private let paper = NSColor(srgbRed: 0.984, green: 0.914, blue: 0.808, alpha: 1)
     private var base: NSColor {
         switch kind {
+        case .kernl: return NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 1)
         case .speakr: return NSColor(srgbRed: 0.290, green: 0.090, blue: 0.282, alpha: 1)
         case .listnr: return NSColor(srgbRed: 0.027, green: 0.212, blue: 0.173, alpha: 1)
         case .writr: return NSColor(srgbRed: 0.012, green: 0.227, blue: 0.290, alpha: 1)
@@ -23,6 +25,7 @@ final class KernlMarkView: NSView {
     }
     private var mid: NSColor {
         switch kind {
+        case .kernl: return NSColor(white: 0.30, alpha: 1)
         case .speakr: return NSColor(srgbRed: 0.482, green: 0.169, blue: 0.388, alpha: 1)
         case .listnr: return NSColor(srgbRed: 0.180, green: 0.455, blue: 0.314, alpha: 1)
         case .writr: return NSColor(srgbRed: 0.055, green: 0.416, blue: 0.447, alpha: 1)
