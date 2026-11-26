@@ -22,16 +22,26 @@ final class ListnrHomeWindowController {
             }
         }
         shell.onClose = { [weak self] in self?.onClose?() }
+        ListnrVoiceCatalog.shared.refresh { [weak self] in
+            guard let self, self.shell.window?.isVisible == true else { return }
+            self.shell.reloadCurrent()
+        }
     }
 
     func show(section: Int = 0) { shell.show(section: section) }
-    func showSettings() { shell.show(section: 1) }
+    func showSettings() {
+        shell.show(section: 1)
+        ListnrVoiceCatalog.shared.refresh { [weak self] in
+            guard let self, self.shell.window?.isVisible == true else { return }
+            self.shell.reloadCurrent()
+        }
+    }
 
     private func homePage() -> NSView {
         let reads = ReadStore.shared.entries
         let stats = KernlAppShell.statRow([
             ("Reads", "\(reads.count)", "desktop sessions"),
-            ("Voice", "British", "system voice"),
+            ("Voice", ListnrVoiceCatalog.shared.currentVoice()?.name ?? "Heart", "same as Chrome"),
             ("Shortcut", "⌥L", "selection or clipboard"),
             ("Chrome", "extension", "page reader")
         ])
@@ -74,7 +84,6 @@ final class ListnrHomeWindowController {
             fleetLabel("Settings", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1),
             appearanceRow(),
             fleetLabel("Applies to every app in the fleet.", size: 11, color: KernlTheme.muted, lines: 1),
-            row("Voice", "System · British English"),
             row("Shortcut", "⌥L outside Chrome · Alt+L in Chrome"),
             row("Desktop", "Reads selected text or the clipboard"),
             row("Chrome", "Page player, highlighting and hosted voices")
@@ -90,8 +99,37 @@ final class ListnrHomeWindowController {
         return fleetVStack([
             KernlAppShell.pageHeader(eyebrow: "listnr", title: "Settings",
                                     subtitle: "One reader for the laptop and one for the page."),
-            settings, folders
+            voiceCard(), settings, folders
         ], spacing: 18)
+    }
+
+    private func voiceCard() -> NSView {
+        let catalog = ListnrVoiceCatalog.shared
+        let current = ListnrPreferences.shared.voiceID
+        let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+        popup.translatesAutoresizingMaskIntoConstraints = false
+        popup.font = Type.sans(12)
+        popup.controlSize = .large
+        for voice in catalog.voices {
+            popup.addItem(withTitle: "\(voice.name)  ·  \(voice.displayNote)")
+            popup.lastItem?.representedObject = voice.id
+        }
+        if let index = catalog.voices.firstIndex(where: { $0.id == current }) {
+            popup.selectItem(at: index)
+        }
+        popup.target = self
+        popup.action = #selector(voiceChanged(_:))
+        popup.widthAnchor.constraint(equalToConstant: 340).isActive = true
+        let status = catalog.online
+            ? "\(catalog.providerLabel) · same server as Chrome"
+            : "Server offline · using the macOS US female voice"
+        return KernlCard(content: fleetVStack([
+            fleetLabel("Voice", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1),
+            fleetLabel("Heart is the default US female voice. Changing this changes desktop reads and uses the same server as Chrome.",
+                       size: 11, color: KernlTheme.muted, lines: 2),
+            popup,
+            fleetLabel(status, size: 11, color: KernlTheme.muted, lines: 1)
+        ], spacing: 10))
     }
 
     private func row(_ label: String, _ value: String) -> NSView {
@@ -118,6 +156,11 @@ final class ListnrHomeWindowController {
     }()
 
     @objc private func openSettings() { shell.show(section: 1) }
+    @objc private func voiceChanged(_ sender: NSPopUpButton) {
+        guard let id = sender.selectedItem?.representedObject as? String else { return }
+        ListnrPreferences.shared.voiceID = id
+        shell.show(section: 1)
+    }
     @objc private func readSelection() { onRead?() }
     @objc private func readClipboard() { onReadClipboard?() }
     @objc private func appearanceTapped(_ sender: NSButton) {

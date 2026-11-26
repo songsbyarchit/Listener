@@ -204,6 +204,10 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         show(section: 0, activate: false)
     }
 
+    func reloadCurrent() {
+        show(section: selected, activate: false)
+    }
+
     func show(section: Int, activate: Bool = true) {
         guard sections.indices.contains(section) else { return }
         selected = section
@@ -248,7 +252,7 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
     }
 
     static func pageHeader(eyebrow: String, title: String, subtitle: String) -> NSView {
-        fleetVStack([fleetEyebrow(eyebrow), fleetTitle(title),
+        fleetVStack([fleetTitle(title),
                      fleetLabel(subtitle, size: 15, color: KernlTheme.muted, lines: 0)], spacing: 6)
     }
 

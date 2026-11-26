@@ -123,15 +123,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func readSelection() {
-        guard let text = SelectionReader.selectedText() else {
-            if !AXIsProcessTrusted() {
-                hud.showError("Grant Accessibility to listnr, then try again.")
-            } else {
-                hud.showError("Select some text first.")
-            }
+        if let selected = SelectionReader.selectedText(), !selected.isEmpty {
+            speak(selected, source: "selection")
             return
         }
-        speak(text)
+        guard AXIsProcessTrusted() else {
+            hud.showError("Grant Accessibility to listnr, then try again.")
+            return
+        }
+        guard let text = SelectionReader.fallbackText(), !text.isEmpty else {
+            hud.showError("No readable text is visible.")
+            return
+        }
+        speak(text, source: "screen")
     }
 
     @objc private func readClipboard() {

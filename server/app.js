@@ -436,6 +436,27 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     });
   });
 
+  // Desktop Listnr uses this route so it speaks through exactly the same
+  // provider, model and voice settings as the Chrome reader.
+  app.post('/api/tts/speak', async (request, response) => {
+    const text = String(request.body?.text || '').trim();
+    if (!text) throw badRequest('Text is required.');
+    if (text.length > 5000) throw badRequest('This passage is too long. Select a shorter section.');
+
+    const settings = ttsSettings();
+    const voices = await knownVoices();
+    const voice = resolveVoice(settings, String(request.body?.voice || ''), voices);
+    if (!voice) {
+      throw new HttpError(409, 'No usable voice is configured for this provider.', 'voice_required');
+    }
+
+    const audio = await tts.synthesize(text, voice);
+    const buffer = await fs.promises.readFile(audio.file);
+    response.setHeader('Content-Type', audio.contentType);
+    response.setHeader('Cache-Control', 'private, max-age=86400');
+    response.send(buffer);
+  });
+
   app.get('/api/voices', async (_request, response) => {
     const settings = ttsSettings();
     const voices = await tts.fetchVoices();
