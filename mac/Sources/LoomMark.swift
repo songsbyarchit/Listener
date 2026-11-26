@@ -21,12 +21,12 @@ final class LoomMarkView: NSView {
         case .readr: return NSColor(srgbRed: 0.290, green: 0.063, blue: 0.161, alpha: 1)
         }
     }
-    private var accent: NSColor {
+    private var mid: NSColor {
         switch kind {
-        case .speekr: return NSColor(srgbRed: 0.910, green: 0.365, blue: 0.541, alpha: 1)
-        case .listnr: return NSColor(srgbRed: 0.545, green: 0.765, blue: 0.290, alpha: 1)
-        case .writr: return NSColor(srgbRed: 0.125, green: 0.718, blue: 0.745, alpha: 1)
-        case .readr: return NSColor(srgbRed: 0.953, green: 0.447, blue: 0.078, alpha: 1)
+        case .speekr: return NSColor(srgbRed: 0.482, green: 0.169, blue: 0.388, alpha: 1)
+        case .listnr: return NSColor(srgbRed: 0.180, green: 0.455, blue: 0.314, alpha: 1)
+        case .writr: return NSColor(srgbRed: 0.055, green: 0.416, blue: 0.447, alpha: 1)
+        case .readr: return NSColor(srgbRed: 0.604, green: 0.180, blue: 0.180, alpha: 1)
         }
     }
 
@@ -58,9 +58,8 @@ final class LoomMarkView: NSView {
         }
 
         let tile = path(NSRect(x: 0.5 * unit, y: 0.5 * unit, width: 29 * unit, height: 29 * unit), 8)
-        base.setFill()
-        tile.fill()
-        paper.withAlphaComponent(0.14).setStroke()
+        NSGradient(starting: base, ending: mid)?.draw(in: tile, angle: -45)
+        paper.withAlphaComponent(0.16).setStroke()
         tile.lineWidth = max(0.5, 0.6 * unit)
         tile.stroke()
 
@@ -68,40 +67,86 @@ final class LoomMarkView: NSView {
             color.setFill()
             path.fill()
         }
-
-        let letter: String
-        switch kind {
-        case .speekr: letter = "S"
-        case .listnr: letter = "L"
-        case .writr: letter = "W"
-        case .readr: letter = "R"
+        func stroke(_ path: NSBezierPath, _ color: NSColor, _ width: CGFloat) {
+            color.setStroke()
+            path.lineWidth = width * unit
+            path.stroke()
         }
-        let font = NSFont(name: "InstrumentSans-Regular_Bold", size: 17 * unit)
-            ?? NSFont.systemFont(ofSize: 17 * unit, weight: .bold)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: paper
-        ]
-        let text = letter as NSString
-        let textSize = text.size(withAttributes: attributes)
-        text.draw(at: NSPoint(x: (s - textSize.width) / 2,
-                              y: 2 * unit + max(0, (14 * unit - textSize.height) / 2)),
-                  withAttributes: attributes)
 
-        let heights: [CGFloat] = [2.2, 3.2, 4.4, 3.2, 2.2]
-        let barWidth: CGFloat = 1.2
-        let gap: CGFloat = 1.2
-        let total = barWidth * CGFloat(heights.count) + gap * CGFloat(heights.count - 1)
-        var x = (s - total) / 2
-        for (index, height) in heights.enumerated() {
-            let bar = NSBezierPath(roundedRect: NSRect(x: x, y: 23.2 * unit,
-                                                       width: barWidth * unit,
-                                                       height: height * unit),
-                                   xRadius: barWidth * unit / 2,
-                                   yRadius: barWidth * unit / 2)
-            (index == 2 ? accent : paper).setFill()
-            bar.fill()
-            x += (barWidth + gap) * unit
+        switch kind {
+        case .speekr:
+            // Microphone: cream capsule, dark grille, arc and stand.
+            fill(path(rect(11.5, 5.2, 7, 10.5, 3.5), 3.5), paper)
+            for y in [7.2, 9.2, 11.2] as [CGFloat] {
+                fill(path(rect(12.8, y, 4.4, 0.55, 0.28), 0.28), base)
+            }
+            let arc = NSBezierPath()
+            arc.move(to: NSPoint(x: 8.8 * unit, y: 14.0 * unit))
+            arc.curve(to: NSPoint(x: 21.2 * unit, y: 14.0 * unit),
+                      controlPoint1: NSPoint(x: 9.6 * unit, y: 21.0 * unit),
+                      controlPoint2: NSPoint(x: 20.4 * unit, y: 21.0 * unit))
+            stroke(arc, paper, 1.2)
+            fill(path(rect(14.6, 20.0, 0.8, 3.0, 0.4), 0.4), paper)
+            fill(path(rect(12.6, 22.8, 5.0, 0.9, 0.45), 0.45), paper)
+
+        case .listnr:
+            // Headphones: cream band and two ear cups.
+            let band = NSBezierPath()
+            band.move(to: NSPoint(x: 7.6 * unit, y: 17.0 * unit))
+            band.curve(to: NSPoint(x: 22.4 * unit, y: 17.0 * unit),
+                       controlPoint1: NSPoint(x: 7.6 * unit, y: 6.8 * unit),
+                       controlPoint2: NSPoint(x: 22.4 * unit, y: 6.8 * unit))
+            stroke(band, paper, 1.8)
+            fill(path(rect(6.6, 15.3, 4.4, 7.2, 2.2), 2.2), paper)
+            fill(path(rect(19.0, 15.3, 4.4, 7.2, 2.2), 2.2), paper)
+            fill(path(rect(8.0, 17.4, 1.6, 3.0, 0.8), 0.8), base)
+            fill(path(rect(20.4, 17.4, 1.6, 3.0, 0.8), 0.8), base)
+
+        case .writr:
+            // Fountain pen nib: cream leaf, dark breather hole and slit.
+            let nib = NSBezierPath()
+            nib.move(to: NSPoint(x: 15 * unit, y: 4.0 * unit))
+            nib.curve(to: NSPoint(x: 22.2 * unit, y: 12.1 * unit),
+                      controlPoint1: NSPoint(x: 18.4 * unit, y: 5.2 * unit),
+                      controlPoint2: NSPoint(x: 21.0 * unit, y: 9.0 * unit))
+            nib.curve(to: NSPoint(x: 15 * unit, y: 25.8 * unit),
+                      controlPoint1: NSPoint(x: 21.0 * unit, y: 17.6 * unit),
+                      controlPoint2: NSPoint(x: 18.0 * unit, y: 22.8 * unit))
+            nib.curve(to: NSPoint(x: 7.8 * unit, y: 12.1 * unit),
+                      controlPoint1: NSPoint(x: 12.0 * unit, y: 22.8 * unit),
+                      controlPoint2: NSPoint(x: 9.0 * unit, y: 17.6 * unit))
+            nib.curve(to: NSPoint(x: 15 * unit, y: 4.0 * unit),
+                      controlPoint1: NSPoint(x: 9.0 * unit, y: 9.0 * unit),
+                      controlPoint2: NSPoint(x: 11.6 * unit, y: 5.2 * unit))
+            nib.close()
+            fill(nib, paper)
+            let hole = NSBezierPath(ovalIn: rect(13.6, 11.0, 2.8, 2.8, 1.4))
+            fill(hole, base)
+            let slit = NSBezierPath()
+            slit.move(to: NSPoint(x: 15 * unit, y: 13.8 * unit))
+            slit.line(to: NSPoint(x: 15 * unit, y: 24.0 * unit))
+            stroke(slit, base, 0.55)
+
+        case .readr:
+            // Open book: two cream pages with a dark spine.
+            let left = NSBezierPath()
+            left.move(to: NSPoint(x: 15 * unit, y: 9.0 * unit))
+            left.line(to: NSPoint(x: 6.4 * unit, y: 6.2 * unit))
+            left.line(to: NSPoint(x: 6.4 * unit, y: 22.0 * unit))
+            left.line(to: NSPoint(x: 15 * unit, y: 25.0 * unit))
+            left.close()
+            let right = NSBezierPath()
+            right.move(to: NSPoint(x: 15 * unit, y: 9.0 * unit))
+            right.line(to: NSPoint(x: 23.6 * unit, y: 6.2 * unit))
+            right.line(to: NSPoint(x: 23.6 * unit, y: 22.0 * unit))
+            right.line(to: NSPoint(x: 15 * unit, y: 25.0 * unit))
+            right.close()
+            fill(left, paper)
+            fill(right, paper)
+            let spine = NSBezierPath()
+            spine.move(to: NSPoint(x: 15 * unit, y: 8.8 * unit))
+            spine.line(to: NSPoint(x: 15 * unit, y: 24.6 * unit))
+            stroke(spine, base, 0.8)
         }
     }
 }
