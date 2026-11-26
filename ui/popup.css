@@ -19,8 +19,9 @@
 }
 
 :root {
-  --bg: #141415;
-  --raised: #1D1D1F;
+  --bg: #0B0B0C;
+  --raised: #141415;
+  --soft: #1D1D1F;
   --ink: #F7F5F0;
   --muted: #A8A39A;
   --faint: #8A857C;
@@ -252,6 +253,6 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
   padding: 2px 5px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 600 10px/1.2 "Instrument Sans", sans-serif;
   color: var(--muted);
 }

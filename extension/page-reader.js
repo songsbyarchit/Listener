@@ -96,7 +96,7 @@
   gap: 2px;
   border: 1px solid rgba(255,255,255,.13);
   border-radius: 999px;
-  background: #141415;
+  background: #0B0B0C;
   color: #F7F5F0;
   box-shadow: 0 8px 28px rgba(0,0,0,.32);
   overflow: hidden;
@@ -117,7 +117,7 @@
   border: 0;
   background: transparent;
   color: inherit;
-  font: 600 12px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 600 12.5px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: .01em;
   cursor: inherit;
 }
@@ -150,10 +150,10 @@
   max-width: min(340px, calc(100vw - 36px));
   padding: 10px 12px;
   border-radius: 9px;
-  background: #141415;
+  background: #0B0B0C;
   color: #F7F5F0;
   box-shadow: 0 10px 32px rgba(0,0,0,.35);
-  font: 500 11.5px/1.45 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 500 12px/1.45 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   white-space: normal;
   pointer-events: none;
 }
@@ -170,7 +170,7 @@
   flex-direction: column;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 18px;
-  background: #141415;
+  background: #0B0B0C;
   color: #F7F5F0;
   box-shadow: 0 18px 60px rgba(0,0,0,.42);
   overflow: hidden;
@@ -192,7 +192,7 @@
 }
 .lnr-brand {
   display: flex; align-items: center; gap: 7px;
-  font: 750 9.5px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 750 10px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: .2em; text-transform: uppercase;
   color: #F7F5F0;
 }
@@ -239,7 +239,7 @@
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   margin-top: 8px;
   color: #A8A39A;
-  font: 500 10px/1.35 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 500 11px/1.35 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 .lnr-controls {
@@ -269,7 +269,7 @@
   border-radius: 999px;
   background: transparent;
   color: #F7F5F0;
-  font: 650 11px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 650 12px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
@@ -279,7 +279,7 @@
 /* Settings popover inside the panel */
 .lnr-settings {
   border-top: 1px solid rgba(255,255,255,.08);
-  background: #1D1D1F;
+  background: #141415;
   padding: 12px 15px 14px;
   max-height: 46vh;
   overflow-y: auto;
@@ -291,7 +291,7 @@
   display: block;
   margin: 0 0 9px;
   color: #A8A39A;
-  font: 600 9.5px/1.2 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 600 10px/1.2 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -309,9 +309,9 @@
   margin-top: 5px;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 7px;
-  background: #141415;
+  background: #0B0B0C;
   color: #F7F5F0;
-  font: 500 11px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 500 12px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   padding: 0 8px;
   outline: none;
 }
@@ -333,7 +333,7 @@
   margin-top: -5px;
   border-radius: 50%;
   background: #F25533;
-  border: 2px solid #1D1D1F;
+  border: 2px solid #141415;
 }
 .lnr-presets { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 12px; }
 .lnr-presets button {
@@ -345,7 +345,7 @@
   font: 600 10px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer;
 }
-.lnr-presets button.is-on { background: #F7F5F0; border-color: #F7F5F0; color: #141415; }
+.lnr-presets button.is-on { background: #F7F5F0; border-color: #F7F5F0; color: #0B0B0C; }
 .lnr-follow {
   display: flex !important;
   align-items: center;
@@ -353,12 +353,12 @@
   margin: 4px 0 0 !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   color: #A8A39A !important;
   cursor: pointer;
 }
 .lnr-follow input { accent-color: #F25533; }
-.lnr-hint { margin: 9px 0 0; color: #8A857C; font: 500 9.5px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
+.lnr-hint { margin: 9px 0 0; color: #8A857C; font: 500 10px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* Pin-position picker */
 .lnr-dock {
@@ -377,7 +377,7 @@
   border-radius: 8px;
   background: transparent;
   color: #A8A39A;
-  font: 600 9px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 600 10px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
@@ -412,7 +412,7 @@
   border-radius: 7px;
   background: rgba(221,85,47,.15);
   color: #F25533;
-  font: 500 10.5px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font: 500 11px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .lnr-panel-toast[hidden] { display: none; }
 

@@ -12,7 +12,7 @@ mkdir -p "$OUT"
 echo "Packaging LISTNR $VERSION"
 
 zip -qr "$OUT/listnr-extension-$VERSION.zip" \
-  manifest.json ui extension icons README.md INSTALL.md
+  manifest.json ui extension icons fonts README.md INSTALL.md
 
 zip -qr "$OUT/listnr-server-$VERSION.zip" \
   package.json package-lock.json server ui manifest.json extension icons \

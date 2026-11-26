@@ -1,6 +1,6 @@
 {
   "name": "listnr",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "LISTNR — a local-first document reader with a Chrome extension UI, local Kokoro speech, and optional hosted voices.",
   "type": "module",
