@@ -210,3 +210,26 @@ export function normalizeDocument({ title, author, blocks }) {
     wordCount
   };
 }
+
+// Voices read symbols by their names ("record button" for ●), so speech
+// gets text with the decoration taken out. What is shown is left unchanged.
+const DECORATION = /[•‣⁃⁌⁍∙■-◿─-▟☀-➿⬀-⯿\u{1F000}-\u{1FAFF}️‍]|\p{Extended_Pictographic}/gu;
+
+export function speakableText(value) {
+  return String(value ?? '')
+    .split('\n')
+    .map((line) => {
+      const leading = /^\s*[·•|←-⇿■-◿☀-➿⬀-⯿\u{1F000}-\u{1FAFF}️‍─-▟]+\s*/u;
+      return line
+        .replace(leading, '')
+        // A separator between two words is a pause.
+        .replace(/(\S)\s*(?:[·•|]|[←-⇿⟰-⟿⤀-⥿]|[▶▸►◀◂◄])\s*(?=\S)/gu, '$1, ')
+        .replace(DECORATION, ' ')
+        .replace(/\s+([,.!?;:])/g, '$1')
+        .replace(/,\s*,+/g, ',')
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/^[,\s]+|[,\s]+$/g, '');
+    })
+    .filter((line) => line.length > 0)
+    .join('\n');
+}

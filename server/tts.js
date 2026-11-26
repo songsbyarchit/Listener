@@ -1,3 +1,4 @@
+import { speakableText } from './normalize.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -422,8 +423,10 @@ export function createTtsService({ config, db, fetchImpl = globalThis.fetch }) {
     return crypto.createHash('sha256').update(parts.join('\u0000')).digest('hex');
   }
 
-  async function synthesize(text, voice, { context } = {}) {
+  async function synthesize(rawText, voice, { context } = {}) {
     const settings = settingsNow();
+    // Symbols are shown but never spoken. A piece of only symbols is a pause.
+    const text = speakableText(rawText) || '.';
 
     if (!isValidVoiceForProvider(settings.provider, voice)) {
       throw new HttpError(400, 'That is not a valid voice name.', 'invalid_voice', {
