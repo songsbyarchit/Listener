@@ -88,8 +88,29 @@ export function createMockTts({ audio = 'fake-mp3-bytes' } = {}) {
         body = null;
       }
     }
-    calls.push({ url: href, body });
+    calls.push({ url: href, body, headers: options.headers || {}, method: options.method || 'GET' });
 
+    if (href.includes('/v1/text-to-speech/')) {
+      return new Response(Buffer.from(audio), {
+        status: 200,
+        headers: { 'content-type': 'audio/mpeg' }
+      });
+    }
+    if (href.includes('/v1/voices')) {
+      return new Response(
+        JSON.stringify({
+          voices: [
+            {
+              voice_id: '21m00Tcm4TlvDq8ikWAM',
+              name: 'Rachel',
+              labels: { accent: 'American', description: 'calm' }
+            },
+            { voice_id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', labels: { accent: 'American' } }
+          ]
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      );
+    }
     if (href.endsWith('/audio/speech')) {
       return new Response(Buffer.from(audio), {
         status: 200,

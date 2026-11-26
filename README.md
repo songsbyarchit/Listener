@@ -1,12 +1,14 @@
 # LISTNR
 
-**A local-first document reader that covers Speechify's core loop — as a Chrome extension and a local web app.**
+**A local-first page reader for Chrome — it reads the page you are on, without leaving it.**
 
-A small **Listen** pill appears on readable web pages. One click captures the page you are actually looking at — including pages behind a login — and plays it **without leaving the page**: an in-page panel gives you play/pause, sentence skip, speed, voice, volume, and pauses, while the current sentence is highlighted directly on the page. The full LISTNR library/reader is still one click away. You can also paste text or import TXT, Markdown, HTML, PDF, EPUB, PNG, and JPEG from the library. LISTNR reads with a **local Kokoro voice** in sentence-sized chunks and keeps your place in SQLite, and never sends your library to a server you do not own.
+A small **Listen** pill appears on readable web pages. One click captures the page you are actually looking at — including pages behind a login — and plays it **without leaving the page**: an in-page panel gives you play/pause, sentence skip, speed, voice, volume, and pauses, while the current sentence is highlighted directly on the page. The LISTNR **toolbar popup** holds the shared playback settings — voice, speed, volume, pauses, and follow-highlight — and every page you listen to uses them. LISTNR reads with a **local Kokoro voice** in sentence-sized chunks, keeps your reading position in SQLite, and never sends your library to a server you do not own.
 
-No account. No subscription. No hosted speech API. No API key. No telemetry.
+No account. No subscription. No telemetry. Local voices by default — and if you want a hosted voice, you can bring your own ElevenLabs or OpenAI-compatible key.
 
-![LISTNR reader](docs/screenshots/reader.png)
+> **This version is extension-only.** There is no separate library/reader window or local web app: the toolbar popup and the in-page player are the whole UI. The standalone app may return in a later version.
+
+![LISTNR in-page player](docs/screenshots/page-player.png)
 
 ## Quick start
 
@@ -18,7 +20,7 @@ cd Listener
 docker compose up -d --build
 ```
 
-Open **http://127.0.0.1:8787** — or load this folder as an unpacked Chrome extension at `chrome://extensions` and click the LISTNR toolbar icon.
+Load this folder as an unpacked Chrome extension at `chrome://extensions`, then click the LISTNR toolbar icon for playback settings and **Read this page**.
 
 **Option B — Node + your own Kokoro server:**
 
@@ -34,61 +36,42 @@ Full instructions, Docker notes, Apple Silicon guidance, backup, and troubleshoo
 
 ## What it does
 
-- **Import**
-  - Pasted text
-  - `.txt`, `.md` / `.markdown`
-  - `.html` / `.htm` / `.xhtml`
-  - `.pdf`
-  - `.epub`
-  - `.png`, `.jpg`, `.jpeg` via local OCR
-  - Public web pages by URL (with private-network blocking)
-- **Extraction**
-  - Mozilla Readability for HTML
-  - PDF.js for PDFs (text-layer PDFs; scanned PDFs need image OCR)
-  - epub.js for EPUBs (spine order + navigation labels)
-  - Tesseract.js for image OCR, using local traineddata
-  - Headings, lists, quotes, code, and captions are preserved
-  - Content is normalized into **chapters → paragraphs → sentences**
+- **Read the page you're on**
+  - **Listen** pill that snaps to the left, right, or bottom edge and opens the player where it was last left
+  - The open player can be dragged anywhere on the page and resized from its edges or corners; its spot and size are remembered
+  - Captures the current DOM (so logged-in pages work), not just the public URL
+  - **In-page player** with play/pause, sentence skip, stop, speed, voice, volume, and pauses
+  - **Highlight overlay** follows the current sentence directly on the page
+  - Minimize keeps playing
+  - `Alt+Shift+L` (Option+Shift+L on macOS) starts it from the keyboard
+  - The captured page is stored server-side, so its position and cached audio survive reloads
+- **Toolbar popup**
+  - **Read this page** starts LISTNR on the current tab
+  - Shared playback settings — voice, speed, volume, sentence/paragraph pauses, follow-highlight — saved in `chrome.storage.local` and applied to every page
+  - Live local-server status and the voice list
 - **Listening**
   - Sentence-sized requests to a local OpenAI-compatible Kokoro endpoint
   - Returned audio is cached by text + voice; repeated sentences cost no synthesis
   - One-sentence prefetch and an 8-entry browser audio cache
-  - Play, pause, stop, previous/next sentence, previous/next chapter
-  - Click any sentence or paragraph to start there
-  - Playback rate 0.5×–3× (pitch preserved) and volume, saved per document
+  - Play, pause, stop, previous/next sentence
+  - Playback rate 0.5×–3× (pitch preserved) and volume
   - Explicit sentence and paragraph pauses (defaults 160 ms / 600 ms), scaled down at faster speeds
   - Current sentence highlighted and scrolled into view
-- **Library**
-  - Recent documents with progress
-  - Full-text search across titles and extracted text
-  - Delete document + original upload
-  - Plain-text export
-  - Extracting / ready / playing / paused / finished / recoverable-error states
 - **Local storage**
   - SQLite (`better-sqlite3`, WAL) for metadata, extracted text, position, settings, default voice
   - Original uploads and cached speech under `data/`
-- **Read the page you're on**
-  - Floating **Listen** pill on readable `http(s)` pages
-  - Captures the current DOM (so logged-in pages work), not just the public URL
-  - **In-page player** with play/pause, sentence skip, stop, speed, voice, volume, and pauses
-  - **Highlight overlay** follows the current sentence directly on the page
-  - Minimize keeps playing; expand opens the separate full reader/library
-  - `Alt+Shift+L` (Option+Shift+L on macOS) does the same from the keyboard
-  - The captured page becomes a normal library document
-- **Chrome extension**
-  - Toolbar action opens the full library/reader as an extension page
-  - Talks to `http://127.0.0.1:8787` through host permissions
-  - The same UI is served by Express at `/` if you prefer a web tab
+- **Server import and extraction** (API-level; there is no library window in this version)
+  - Pasted text and `.txt`, `.md`, `.html`, `.pdf`, `.epub`, and `.png`/`.jpg` (local OCR)
+  - Public web pages by URL (with private-network blocking)
+  - Mozilla Readability for HTML, PDF.js, epub.js, Tesseract.js
+  - Headings, lists, quotes, code, and captions are preserved
+  - Content is normalized into **chapters → paragraphs → sentences**
 
 ### Screens
 
-| Library | Voices |
+| Listen pill | In-page player + page highlight |
 | --- | --- |
-| ![Library](docs/screenshots/library.png) | ![Voice picker](docs/screenshots/voices.png) |
-
-| Listen pill | In-page player + page highlight | Separate full reader |
-| --- | --- | --- |
-| ![Listen pill](docs/screenshots/page-pill.png) | ![In-page player](docs/screenshots/page-player.png) | ![Full reader](docs/screenshots/page-reader.png) |
+| ![Listen pill](docs/screenshots/page-pill.png) | ![In-page player](docs/screenshots/page-player.png) |
 
 ---
 
@@ -109,7 +92,7 @@ From the official ONNX model repository:
 | Installed Node dependencies (PDF/EPUB/HTML/OCR) | **~226 MB** |
 | Kokoro-FastAPI Docker image | large (Python + ONNX runtime), pulled once |
 
-So the “50–80 MB app” intuition is right — but that 80 MB is the **shared model**, not three or four speakers. Choosing four voices costs about 2 MB because they reuse the same model. In LISTNR, voices live in the Kokoro server; **Browse** shows every voice the server exposes, and adding one does not grow the extension.
+So the “50–80 MB app” intuition is right — but that 80 MB is the **shared model**, not three or four speakers. Choosing four voices costs about 2 MB because they reuse the same model. In LISTNR, voices live in the Kokoro server; the popup lists every voice the server exposes, and adding one does not grow the extension.
 
 Suggested starters:
 
@@ -121,33 +104,63 @@ Suggested starters:
 | `bf_emma` | UK female |
 | `bm_george` | UK male |
 
-Open **Voice → Browse** to preview, use a voice for this document, or set it as the default for new imports.
+Pick a voice in the LISTNR toolbar popup (or the player's gear menu). The choice is shared across every page; no per-document voice setup is needed.
 
 > macOS system voices are not used here. If Chrome’s built-in voice sounds robotic, that is usually a compact OS voice — LISTNR avoids it by using Kokoro. You can still install macOS Premium/Enhanced voices for other apps.
+
+## Use a hosted voice (optional)
+
+LISTNR ships with **no key and no hosted voice**. If you would rather use ElevenLabs, OpenAI, or any OpenAI-compatible endpoint, configure the server environment — there is no hosted-voice screen in this extension-only build:
+
+1. Stop the server.
+2. Start it with `TTS_PROVIDER` (`elevenlabs`, `openai`, or `custom`), `TTS_API_KEY`, and, where needed, `TTS_BASE_URL` / `TTS_MODEL`.
+3. Reload the extension popup; its voice list now comes from that account.
+
+See [INSTALL.md](INSTALL.md#connecting-a-hosted-voice-optional) for the exact commands.
+
+**How the key is stored.** With environment variables the key lives only in the process environment (or your `.env`/Compose configuration). If a key was saved by an earlier version, it lives in `data/listnr.db`, readable only by your account (`0600`), and is never returned by the API. It is sent only to the provider origin it was saved for.
+
+**What leaves the machine.** With a hosted provider, the text you listen to is sent to that provider. Nothing else is. LISTNR still speaks sentence by sentence so playback, highlighting, and resume-at-the-exact-sentence keep working; for ElevenLabs it also sends the surrounding paragraph as `previous_text`/`next_text` so each sentence is voiced in the context of the passage (that context is not spoken and is not billed). ElevenLabs requests set `enable_logging=false` so the text is not kept in its history.
+
+**What it costs.** Roughly 56,000 characters is one hour of audio. LISTNR caches each synthesized sentence under `data/audio`, so re-listening is free and only new text or a new voice bills again.
+
+| Option | Price | 10k-word article (~60k chars) | 90k-word book (~550k chars) |
+| --- | --- | ---: | ---: |
+| Local Kokoro | **$0** | $0 | $0 |
+| OpenAI `tts-1` / `gpt-4o-mini-tts` | ~$15–20 / 1M chars | ~$0.90–1.20 | ~$8–11 |
+| OpenAI `tts-1-hd` | $30 / 1M chars | ~$1.80 | ~$16.50 |
+| ElevenLabs Flash/Turbo | ~0.5 credits per character | ~$2.40–6 | ~$22–50 |
+| ElevenLabs Multilingual v2/v3 | ~1 credit per character | ~$5–12 | ~$44–110 |
+
+ElevenLabs plans, for scale: Free 10k credits ≈ 11 min/month · Starter $6 = 30k ≈ 32 min · Creator $22 = 121k ≈ 2.1 h · Pro $99 = 600k ≈ 10.7 h. Prices change; check the provider.
+
+> OpenAI retires `gpt-4o-mini-tts`, `tts-1`, and `tts-1-hd` on **6 January 2027**, and the replacement does not use `/v1/audio/speech`. The OpenAI preset will stop working then; `TTS_PROVIDER=custom` with an OpenAI-compatible base URL is the durable path.
+
+To go back to free local speech, restart the server with `TTS_PROVIDER=kokoro` and no key.
 
 ---
 
 ## How it works
 
 ```text
-Chrome extension page  ─────────────┐
-                                   ├── HTTP ──► Express (127.0.0.1:8787)
-Local web UI (same files) ─────────┘               │
-                                                   ├─ SQLite (better-sqlite3)
-                                                   ├─ parsers: Readability, PDF.js,
-                                                   │  epub.js, Tesseract.js
-                                                   ├─ SSRF-safe URL import
-                                                   └─ /audio/:sentence
-                                                          │
-                                                          ▼
-                                              Kokoro-FastAPI
-                                        (OpenAI-compatible, local)
+Toolbar popup (settings) ───────────┐
+                                    ├── HTTP ──► Express (127.0.0.1:8787)
+In-page player (content script) ────┘               │
+                                                     ├─ SQLite (better-sqlite3)
+                                                     ├─ parsers: Readability, PDF.js,
+                                                     │  epub.js, Tesseract.js
+                                                     ├─ SSRF-safe URL import
+                                                     └─ /audio/:sentence
+                                                            │
+                                                            ▼
+                                                Kokoro-FastAPI
+                                          (OpenAI-compatible, local)
 ```
 
-- The extension and web UI share `ui/`; there is no build step and no framework.
-- The extension has only `tabs` permission plus host permissions for `127.0.0.1` / `localhost`.
-- Sentence text is sent to **your own** Kokoro endpoint. Audio comes back and is cached under `data/audio`; nothing goes to a third party.
-- Reading position and settings are saved after sentence changes and on page hide; reopening or restarting the server resumes exactly there.
+- The extension has no build step and no framework: `ui/popup.*` is the toolbar popup, `extension/page-reader.js` is the in-page player.
+- Permissions are `tabs`, `storage`, `scripting`, and `activeTab`, plus host permissions for `127.0.0.1` / `localhost`.
+- Sentence text is sent to **your own** Kokoro endpoint by default. If you connect a hosted provider, only that sentence (plus nearby paragraph context for ElevenLabs) goes to the provider you chose. Audio comes back and is cached under `data/audio`.
+- Reading position and playback settings are saved after sentence changes and on page hide; reopening or restarting the server resumes exactly there.
 - Pauses are scheduled between sentences by the UI, so paragraphs genuinely breathe instead of relying on punctuation alone.
 
 ## Import and URL security
@@ -160,16 +173,16 @@ Local web UI (same files) ─────────┘               │
   - follows redirects manually and revalidates every hop
   - pins the HTTP connection to the validated address to reduce DNS rebinding
   - limits response size and time
-- URL import is the only outbound network call. Everything else stays local.
+- In the default local setup, URL import is the only outbound network call. If you connect a hosted voice provider, speech requests to that provider are the other one.
 
 ## Privacy and data
 
 - Server binds `127.0.0.1` by default. Docker publishes only `127.0.0.1:8787` on the host.
 - No accounts, analytics, billing, telemetry, or public hosting.
-- No hosted speech API and no API key.
+- Local speech by default. Hosted voices are opt-in and use a key you supply; the text you listen to is sent only to the provider you configure.
 - Data lives in `./data/` (`listnr.db`, `uploads/`, `audio/`, `tessdata/`).
 - **Backup:** stop the server, copy `data/`.
-- **Delete a document:** use the Delete button (row, extracted text, position, original upload). Cached audio is shared by text+voice and is pruned LRU.
+- **Delete a document:** there is no library window in this version; stop the server and remove the document's rows from `data/listnr.db`. Cached audio is shared by text+voice and is pruned LRU.
 - **Delete everything:** stop the server and remove `data/`.
 
 See [INSTALL.md](INSTALL.md) for every environment variable and data-location detail.
@@ -198,8 +211,8 @@ npm test
 Result from this build:
 
 ```text
-ℹ tests 24
-ℹ pass 24
+ℹ tests 32
+ℹ pass 32
 ℹ fail 0
 ```
 
@@ -215,23 +228,25 @@ node --test tests/page-import.test.js
 node --test tests/e2e.test.js
 ```
 
-The E2E test imports a file, fetches synthesized speech, saves a position, restarts the app against the same SQLite data, and verifies the position/settings resume. Parsers are tested against real PDF, EPUB, HTML, Markdown, text, and PNG fixtures — including a real local Tesseract OCR pass. The page-capture tests cover DOM imports with login-only content and plain-text fallback. The UI was also exercised in Chrome for Testing against a real Kokoro server: paste import, Markdown upload/extraction polling, library, playback/advance, pause/resume, sentence skip, voice preview/switch, save, reload/resume, the extension-page CORS path, and the full in-page flow — Listen pill, page import, in-page playback, page highlight, speed/voice settings, minimize-while-playing, and the separate full reader.
+The E2E test imports a file, fetches synthesized speech, saves a position, restarts the app against the same SQLite data, and verifies the position/settings resume. Parsers are tested against real PDF, EPUB, HTML, Markdown, text, and PNG fixtures — including a real local Tesseract OCR pass. The page-capture tests cover DOM imports with login-only content and plain-text fallback. The extension itself was exercised in Chrome for Testing against a real Kokoro server: the toolbar popup, page import, in-page playback, page highlight, speed/voice settings, and minimize-while-playing.
 
 ## Project layout
 
 ```text
 manifest.json              MV3 extension manifest
-extension/background.js    Page import, side panel/window, routing, commands
+extension/background.js    Page import, audio and voice bridge, toolbar message routing
 extension/page-reader.js   Listen pill, in-page player, page highlight, DOM capture
-ui/                        Shared vanilla JS/CSS UI (extension + web)
-ui/panel.html              Side-panel variant of the reader UI
+ui/popup.html              Toolbar popup: Read this page + shared playback settings
+ui/popup.js
+ui/popup.css
 server/
   index.js                 Loopback server entry
-  app.js                   Express app, imports, library, audio routes
+  app.js                   Express API, imports, audio routes
   db.js                    SQLite schema and queries
   normalize.js             Chapters, paragraphs, sentences, plain text
   ssrf.js                  Public-URL validation + pinned fetch
-  tts.js                   Kokoro client, audio cache, voice list
+  tts.js                   Voice client (Kokoro / ElevenLabs / OpenAI-compatible), cache
+  tts-providers.js         Provider presets, API-key storage, validation
   parsers/                 HTML, Markdown, text, PDF, EPUB, image OCR
   files.js                 Upload storage, safe names, limits
 tests/                     node:test suites and fixtures

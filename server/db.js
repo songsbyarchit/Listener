@@ -61,6 +61,26 @@ const DEFAULT_POSITION = {
   paragraphIndex: 0
 };
 
+// The database can hold a TTS API key, so keep it (and its WAL sidecars)
+// readable only by the account running LISTNR. Modes are advisory on Windows.
+function hardenPermissions(config) {
+  if (process.platform === 'win32') return;
+
+  try {
+    fs.chmodSync(config.dataDir, 0o700);
+  } catch {
+    // A mounted volume may refuse the mode change; it still works.
+  }
+
+  for (const suffix of ['', '-wal', '-shm']) {
+    try {
+      fs.chmodSync(`${config.dbPath}${suffix}`, 0o600);
+    } catch {
+      // Sidecars appear lazily, and some filesystems ignore chmod.
+    }
+  }
+}
+
 export function openDatabase(config) {
   fs.mkdirSync(config.dataDir, { recursive: true });
   const db = new Database(config.dbPath);
@@ -68,6 +88,7 @@ export function openDatabase(config) {
   db.pragma('synchronous = NORMAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  hardenPermissions(config);
 
   // A previous process died mid-extraction. Do not leave a spinner forever.
   db.prepare(
@@ -291,6 +312,38 @@ export function getSegment(db, documentId, index) {
   );
 }
 
+export function getParagraphContext(db, documentId, index, maxChars = 1200) {
+  const segment = db
+    .prepare(
+      `SELECT idx, chapter_index, paragraph_index
+         FROM segments
+        WHERE document_id = ? AND idx = ?`
+    )
+    .get(documentId, index);
+  if (!segment) return null;
+
+  const rows = db
+    .prepare(
+      `SELECT idx, text
+         FROM segments
+        WHERE document_id = ? AND chapter_index = ? AND paragraph_index = ?
+        ORDER BY idx`
+    )
+    .all(documentId, segment.chapter_index, segment.paragraph_index);
+
+  let before = '';
+  let after = '';
+  for (const row of rows) {
+    if (row.idx < index) before += `${before ? ' ' : ''}${row.text}`;
+    else if (row.idx > index) after += `${after ? ' ' : ''}${row.text}`;
+  }
+
+  return {
+    previousText: before.slice(-maxChars),
+    nextText: after.slice(0, maxChars)
+  };
+}
+
 export function getSegmentCount(db, documentId) {
   return db.prepare('SELECT COUNT(*) AS count FROM segments WHERE document_id = ?').get(documentId).count;
 }
@@ -353,6 +406,10 @@ export function audioCacheTotal(db) {
 export function getAppSetting(db, key, fallback = null) {
   const row = db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key);
   return row ? row.value : fallback;
+}
+
+export function deleteAppSetting(db, key) {
+  db.prepare('DELETE FROM app_settings WHERE key = ?').run(key);
 }
 
 export function setAppSetting(db, key, value) {

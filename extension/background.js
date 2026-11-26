@@ -1,74 +1,4 @@
-const APP_URL = chrome.runtime.getURL('ui/app.html');
 const SERVER_URL = 'http://127.0.0.1:8787';
-
-if (chrome.sidePanel?.setOptions) {
-  chrome.sidePanel.setOptions({ path: 'ui/panel.html', enabled: true }).catch(() => {});
-}
-
-async function openApp() {
-  const existing = await chrome.tabs.query({ url: APP_URL });
-  if (existing.length) {
-    const tab = existing[0];
-    await chrome.tabs.update(tab.id, { active: true });
-    try {
-      await chrome.windows.update(tab.windowId, { focused: true });
-    } catch {
-      // The window may have just closed.
-    }
-    return;
-  }
-  await chrome.tabs.create({ url: APP_URL });
-}
-
-async function openReader(docId, tabId) {
-  const url = `${APP_URL}#/doc/${docId}`;
-
-  // Try Chrome's side panel first. Some Chrome builds only allow this from an
-  // action/command gesture; if it is rejected, fall back to a compact window.
-  if (chrome.sidePanel?.open) {
-    try {
-      await chrome.storage.session.set({
-        listnrPendingDoc: { id: docId, ts: Date.now() }
-      });
-      await chrome.sidePanel.open({ tabId });
-      return { mode: 'side-panel' };
-    } catch {
-      await chrome.storage.session.remove('listnrPendingDoc');
-    }
-  }
-
-  try {
-    const stored = await chrome.storage.session.get('listnrReaderWindowId');
-    let windowId = stored.listnrReaderWindowId ?? null;
-
-    if (windowId != null) {
-      try {
-        await chrome.windows.get(windowId);
-        const [tab] = await chrome.tabs.query({ windowId });
-        if (tab?.id != null) {
-          await chrome.tabs.update(tab.id, { url, active: true });
-          await chrome.windows.update(windowId, { focused: true });
-          return { mode: 'window' };
-        }
-      } catch {
-        windowId = null;
-        await chrome.storage.session.remove('listnrReaderWindowId');
-      }
-    }
-
-    const win = await chrome.windows.create({
-      url,
-      type: 'popup',
-      width: 480,
-      height: 900
-    });
-    await chrome.storage.session.set({ listnrReaderWindowId: win.id });
-    return { mode: 'window' };
-  } catch {
-    await chrome.tabs.create({ url });
-    return { mode: 'tab' };
-  }
-}
 
 async function importPage(message, sender) {
   const page = message.page || {};
@@ -117,12 +47,8 @@ async function importPage(message, sender) {
   const docId = payload?.document?.id;
   if (!docId) return { ok: false, error: 'The server did not return a document.' };
 
-  if (message.inline === true) {
-    return { ok: true, docId, document: payload.document };
-  }
-
-  const opened = await openReader(docId, sender.tab?.id);
-  return { ok: true, docId, mode: opened.mode };
+  // The in-page player keeps the document and reads it right there.
+  return { ok: true, docId, document: payload.document };
 }
 
 function arrayBufferToBase64(buffer) {
@@ -154,7 +80,7 @@ async function fetchAudioForTab(message) {
     return {
       ok: false,
       code: 'tts_unavailable',
-      error: 'The local voice server is offline. Start Kokoro-FastAPI and try again.'
+      error: 'The voice service is unavailable. Check the LISTNR server configuration and try again.'
     };
   }
 
@@ -190,8 +116,9 @@ async function fetchVoiceList() {
     const payload = await response.json();
     return {
       ok: true,
+      provider: payload.provider || 'kokoro',
       voices: payload.voices || [],
-      defaultVoice: payload.defaultVoice || 'af_heart'
+      defaultVoice: payload.defaultVoice || ''
     };
   } catch {
     return { ok: false, error: 'The local LISTNR server is offline.' };
@@ -223,7 +150,7 @@ async function savePageState(message) {
 async function readPageInTab(tabId) {
   try {
     await chrome.tabs.sendMessage(tabId, { type: 'listnr:listen-page' });
-    return;
+    return { ok: true };
   } catch {
     // The tab was loaded before the extension/content script; inject once.
   }
@@ -234,9 +161,20 @@ async function readPageInTab(tabId) {
       files: ['extension/page-reader.js']
     });
     await chrome.tabs.sendMessage(tabId, { type: 'listnr:listen-page' });
+    return { ok: true };
   } catch {
     // Restricted page (chrome://, Web Store, PDF viewer, etc.).
+    return {
+      ok: false,
+      error: 'LISTNR cannot read this page. Open a normal http(s) page and try again.'
+    };
   }
+}
+
+async function readActivePage() {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (tab?.id == null) return { ok: false, error: 'No active tab.' };
+  return readPageInTab(tab.id);
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -278,9 +216,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === 'listnr:open-reader' && sender.tab?.id != null) {
-    openReader(String(message.docId || ''), sender.tab.id)
-      .then((opened) => sendResponse({ ok: true, mode: opened.mode }))
+  if (message.type === 'listnr:read-page') {
+    readActivePage()
+      .then(sendResponse)
       .catch((error) =>
         sendResponse({ ok: false, error: String(error?.message || error) })
       );
@@ -294,17 +232,4 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (command !== 'read-page') return;
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   if (tab?.id != null) await readPageInTab(tab.id);
-});
-
-chrome.windows.onRemoved.addListener(async (windowId) => {
-  const stored = await chrome.storage.session.get('listnrReaderWindowId');
-  if (stored.listnrReaderWindowId === windowId) {
-    await chrome.storage.session.remove('listnrReaderWindowId');
-  }
-});
-
-chrome.action.onClicked.addListener(openApp);
-
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') openApp();
 });

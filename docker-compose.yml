@@ -10,6 +10,10 @@ services:
       TTS_BASE_URL: http://kokoro:8880/v1
       TTS_MODEL: kokoro
       TTS_VOICE: af_heart
+      # Optional hosted voice instead of local Kokoro. Uncomment both, or use
+      # Voice → Voice service in the app (the app stores the key in ./data).
+      # TTS_PROVIDER: elevenlabs
+      # TTS_API_KEY: ${TTS_API_KEY:-}
     ports:
       - "127.0.0.1:8787:8787"
     volumes:

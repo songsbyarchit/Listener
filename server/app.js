@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import express from 'express';
 import multer from 'multer';
 import {
@@ -10,6 +9,7 @@ import {
   getAppSetting,
   getDocument,
   getDocumentRow,
+  getParagraphContext,
   getSegment,
   listDocuments,
   markDocumentExtracting,
@@ -35,7 +35,18 @@ import {
 } from './parsers/index.js';
 import { createTesseractRecognizer } from './parsers/image.js';
 import { fetchPublicHtml, validatePublicUrl } from './ssrf.js';
-import { createTtsService, isValidVoice } from './tts.js';
+import { createTtsService } from './tts.js';
+import {
+  effectiveDefaultVoice,
+  getProvider,
+  isValidVoiceForProvider,
+  providerPresets,
+  publicTtsSettings,
+  readTtsSettings,
+  resetTtsSettings,
+  resolveTtsSettings,
+  writeTtsSettings
+} from './tts-providers.js';
 import {
   createUploadMiddleware,
   ensureDirectories,
@@ -151,7 +162,7 @@ function validatePosition(input, segmentCount) {
   return output;
 }
 
-function validateSettings(input) {
+function validateSettings(input, providerId = 'kokoro') {
   if (input == null) return null;
   if (typeof input !== 'object' || Array.isArray(input)) {
     throw badRequest('settings must be an object.');
@@ -160,7 +171,7 @@ function validateSettings(input) {
   const output = {};
 
   if (input.voice !== undefined) {
-    if (!isValidVoice(input.voice)) throw badRequest('Invalid voice name.');
+    if (!isValidVoiceForProvider(providerId, input.voice)) throw badRequest('Invalid voice name.');
     output.voice = input.voice;
   }
 
@@ -204,15 +215,34 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
   const tts = createTtsService({ config, db, fetchImpl: ttsFetchImpl });
   const upload = createUploadMiddleware(config);
   const ocr = recognize || createTesseractRecognizer({ cachePath: config.tessdataDir });
-  const uiDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'ui');
+
+  const ttsSettings = () => readTtsSettings(db, config);
 
   const documentDefaults = () => ({
-    voice: getAppSetting(db, 'defaultVoice') || config.tts.voice,
+    voice: effectiveDefaultVoice(db, ttsSettings()),
     rate: 1,
     volume: 1,
     sentenceGap: 160,
     paragraphGap: 600
   });
+
+  async function knownVoices() {
+    try {
+      return await tts.fetchVoices({ timeoutMs: 1500 });
+    } catch {
+      return [];
+    }
+  }
+
+  function resolveVoice(settings, candidate, voices) {
+    const ids = voices.map((voice) => voice.id);
+    const usable =
+      candidate &&
+      isValidVoiceForProvider(settings.provider, candidate) &&
+      (!ids.length || ids.includes(candidate));
+
+    return usable ? candidate : effectiveDefaultVoice(db, settings, ids);
+  }
 
   let importQueue = Promise.resolve();
   function enqueue(task) {
@@ -314,18 +344,26 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     })
   );
 
-  // The same UI runs as a Chrome extension page and as a local web page.
-  app.use('/ui', express.static(uiDir, { extensions: ['html'] }));
-  app.get('/', (_request, response) => response.redirect('/ui/app.html'));
+  // The Chrome extension (toolbar popup + in-page player) is the only UI;
+  // this server exposes the local API it talks to.
+  app.get('/', (_request, response) => {
+    response.json({
+      ok: true,
+      name: 'LISTNR',
+      hint: 'Load this folder as an unpacked Chrome extension and click the LISTNR toolbar icon.'
+    });
+  });
 
   app.get('/api/health', (_request, response) => {
+    const settings = ttsSettings();
     response.json({
       ok: true,
       name: 'LISTNR',
       version: '0.2.2',
       tts: {
-        baseUrl: config.tts.baseUrl,
-        model: config.tts.model
+        provider: settings.provider,
+        baseUrl: settings.baseUrl,
+        model: settings.model
       }
     });
   });
@@ -334,16 +372,85 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     response.json(await tts.probe());
   });
 
-  app.get('/api/voices', async (_request, response) => {
+  app.get('/api/tts/settings', (_request, response) => {
+    const settings = ttsSettings();
     response.json({
-      voices: await tts.fetchVoices(),
-      defaultVoice: getAppSetting(db, 'defaultVoice') || config.tts.voice
+      ...publicTtsSettings(settings),
+      defaultVoice: effectiveDefaultVoice(db, settings)
+    });
+  });
+
+  app.patch('/api/tts/settings', async (request, response) => {
+    const patch = request.body;
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+      throw badRequest('Send the voice settings as a JSON object.');
+    }
+
+    if (patch.reset === true) {
+      resetTtsSettings(db);
+    } else {
+      writeTtsSettings(db, config, patch);
+    }
+
+    const settings = ttsSettings();
+    const voices = await tts.fetchVoices({ force: true }).catch(() => []);
+    const ids = voices.map((voice) => voice.id);
+
+    const stored = getAppSetting(db, 'defaultVoice');
+    if (!stored || !ids.includes(stored)) {
+      const next = effectiveDefaultVoice(db, settings, ids);
+      if (next) setAppSetting(db, 'defaultVoice', next);
+    }
+
+    response.json({
+      ...publicTtsSettings(settings),
+      defaultVoice: getAppSetting(db, 'defaultVoice') || effectiveDefaultVoice(db, settings, ids),
+      voices
+    });
+  });
+
+  app.post('/api/tts/test', async (request, response) => {
+    let candidate;
+    try {
+      candidate = resolveTtsSettings(db, config, request.body || {});
+    } catch (error) {
+      if (error instanceof HttpError) {
+        response.json({
+          ok: false,
+          reachable: null,
+          authorized: false,
+          message: error.message,
+          code: error.code
+        });
+        return;
+      }
+      throw error;
+    }
+
+    const result = await tts.probe({ settingsOverride: candidate });
+    response.json({
+      ...result,
+      ok: result.reachable === true && result.authorized !== false,
+      providerLabel: getProvider(candidate.provider)?.label || candidate.provider
+    });
+  });
+
+  app.get('/api/voices', async (_request, response) => {
+    const settings = ttsSettings();
+    const voices = await tts.fetchVoices();
+    response.json({
+      provider: settings.provider,
+      providerLabel: getProvider(settings.provider)?.label || settings.provider,
+      providers: providerPresets(),
+      voices,
+      defaultVoice: effectiveDefaultVoice(db, settings, voices.map((voice) => voice.id))
     });
   });
 
   app.get('/api/voices/:id/preview', async (request, response) => {
     const voice = String(request.params.id || '');
-    if (!isValidVoice(voice)) throw badRequest('Invalid voice name.');
+    const settings = ttsSettings();
+    if (!isValidVoiceForProvider(settings.provider, voice)) throw badRequest('Invalid voice name.');
 
     const sample =
       'Hello. This is how I read. The tide keeps its own patient schedule, and there is no need to rush.';
@@ -357,13 +464,14 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
 
   app.get('/api/settings', (_request, response) => {
     response.json({
-      defaultVoice: getAppSetting(db, 'defaultVoice') || config.tts.voice
+      defaultVoice: effectiveDefaultVoice(db, ttsSettings())
     });
   });
 
   app.patch('/api/settings', (request, response) => {
     const voice = request.body?.defaultVoice;
-    if (!isValidVoice(voice)) throw badRequest('Invalid default voice.');
+    const settings = ttsSettings();
+    if (!isValidVoiceForProvider(settings.provider, voice)) throw badRequest('Invalid default voice.');
     setAppSetting(db, 'defaultVoice', voice);
     response.json({ defaultVoice: voice });
   });
@@ -547,7 +655,7 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     if (!document) throw notFound('Document not found.');
 
     const position = validatePosition(request.body?.position, document.segmentCount);
-    const settings = validateSettings(request.body?.settings);
+    const settings = validateSettings(request.body?.settings, ttsSettings().provider);
 
     const state = updateDocumentState(db, document.id, { position, settings });
     response.json({
@@ -616,8 +724,21 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     const segment = getSegment(db, document.id, index);
     if (!segment) throw notFound('Sentence not found.');
 
-    const voice = String(request.query.voice || document.settings?.voice || config.tts.voice);
-    const audio = await tts.synthesize(segment.text, voice);
+    const settings = ttsSettings();
+    const voices = await knownVoices();
+    const requested = String(request.query.voice || document.settings?.voice || '');
+    const voice = resolveVoice(settings, requested, voices);
+
+    if (!voice) {
+      throw new HttpError(409, 'No usable voice is configured for this provider.', 'voice_required');
+    }
+
+    // ElevenLabs can hear the surrounding paragraph and speak the sentence with
+    // continuity; the extra text is context only, so it is not spoken or billed.
+    const context =
+      settings.provider === 'elevenlabs' ? getParagraphContext(db, document.id, index, 1200) : undefined;
+
+    const audio = await tts.synthesize(segment.text, voice, { context });
     const buffer = await fs.promises.readFile(audio.file);
 
     response.setHeader('Content-Type', audio.contentType);

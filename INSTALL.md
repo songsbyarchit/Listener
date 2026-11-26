@@ -2,10 +2,10 @@
 
 LISTNR has two moving parts:
 
-1. **The Chrome extension** — the library and reader UI. It lives in this repo and talks only to `127.0.0.1`.
+1. **The Chrome extension** — the toolbar popup for playback settings and the in-page player. It lives in this repo and talks only to `127.0.0.1`.
 2. **The local server** — Express + SQLite + document parsers + the voice bridge. It talks to your own Kokoro-FastAPI server.
 
-There are no accounts, API keys, hosted voices, analytics, or cloud storage.
+There are no accounts, analytics, or cloud storage. Local Kokoro is the default and needs no key. Hosted voices are optional and configured through the server environment in this version (there is no separate settings app).
 
 ---
 
@@ -16,7 +16,6 @@ There are no accounts, API keys, hosted voices, analytics, or cloud storage.
 | **A. Docker Compose** | One command, no Node setup | Docker images (large, pulled once) + 82 MB model | Included |
 | **B. Node + Kokoro Docker** | Development / smaller download | Node deps ~226 MB installed + 82 MB model | Separate Docker container |
 | **C. GitHub Release zips** | Non-git users | Extension <1 MB + server source <1 MB + Node deps | You still need Kokoro |
-| **D. Local web UI** | No extension needed | Same as A or B | Same |
 
 The **extension itself is under 1 MB**. The “80 MB” people associate with local voices is the shared **Kokoro-82M model (82.05 MB, q8f16)**. Every voice is only **0.5 MB**; the four starter voices add about **2 MB**, not 50–80 MB. All 54 voices together are about 27 MB.
 
@@ -32,7 +31,7 @@ cd Listener
 docker compose up -d --build
 ```
 
-Open **http://127.0.0.1:8787** for the local web UI, or load the extension:
+Load the extension (there is no separate web page in this version):
 
 1. `chrome://extensions`
 2. Enable **Developer mode**
@@ -85,10 +84,7 @@ Terminal 2 — LISTNR:
 npm start
 ```
 
-Then use either:
-
-- Web UI: **http://127.0.0.1:8787**
-- Chrome extension: load this folder at `chrome://extensions` and click the icon
+Then load this folder at `chrome://extensions` and click the LISTNR toolbar icon.
 
 Optional: if you already run a Kokoro/OpenAI-compatible TTS server elsewhere, point LISTNR at it:
 
@@ -96,7 +92,7 @@ Optional: if you already run a Kokoro/OpenAI-compatible TTS server elsewhere, po
 TTS_BASE_URL=http://127.0.0.1:8880/v1 npm start
 ```
 
-No API key is required. The app sends sentence-sized text to that local endpoint and caches returned audio under `data/audio`.
+No API key is required for a local endpoint. The app sends sentence-sized text to that endpoint and caches returned audio under `data/audio`. Hosted providers are covered in [Connecting a hosted voice](#connecting-a-hosted-voice-optional).
 
 ---
 
@@ -129,43 +125,29 @@ The image is private while the repository is private; authenticate with a GitHub
 
 ---
 
-## D. Local web UI
-
-The server serves the same UI the extension uses:
-
-```
-http://127.0.0.1:8787
-```
-
-This is a useful fallback if you do not want to install an extension. The Chrome extension is still the primary interface: it opens the same UI in a proper extension tab and works with the local server through host permissions.
-
----
-
 ## Reading the page you're on
 
 After loading or reloading the extension, **reload any tabs that were already open** once so the content script can attach.
 
-On readable `http(s)` pages you will see a small **Listen** pill in the bottom-right corner:
+On readable `http(s)` pages you will see a small **Listen** pill, initially at the bottom middle:
 
-- Click **Listen** to capture the current page DOM. It plays **inside the page** in a LISTNR panel — the page stays open and the current sentence is highlighted on the page.
-- **Alt+Shift+L** (Option+Shift+L on macOS) does the same from the keyboard.
+- **Drag the pill** (grab the pill, not the ×). It snaps to the **left edge**, **right edge**, or **bottom edge**, and remembers that choice across pages and reloads.
+- Click **Listen** to capture the current page DOM. It plays **inside the page** in a LISTNR panel — the page stays open and the current sentence is highlighted on the page. The player opens where you last left it; drag its header to move it anywhere on the page, and drag its edges or corners to resize it.
+- **Alt+Shift+L** (Option+Shift+L on macOS) does the same from the keyboard, and the toolbar popup has a **Read this page** button.
 - The panel has play/pause, previous/next sentence, stop, speed, voice, volume, and sentence/paragraph pauses.
-- **Minimize** keeps playback and highlighting running; the pill shows **Playing** and reopens the panel.
-- The **expand icon** in the panel, or the toolbar icon, opens the separate full library/reader.
-- The captured page is saved as a normal library document. The pill's × hides LISTNR for that tab.
-- “Follow highlighted text” scrolls the page when the current sentence would be off-screen or behind the panel; turn it off in the panel settings if you’d rather control scrolling yourself.
+- The **Snap player** control in the panel settings moves the player back to the **Left**, **Bottom**, or **Right** edge.
+- **Minimize** keeps playback and highlighting running; the pill shows **Playing** and returns to its snapped edge.
+- The captured page is saved server-side as a document, so its reading position and cached audio survive reloads. The pill's × hides LISTNR for that tab.
+- “Follow highlighted text” scrolls the page when the current sentence would be off-screen or behind the panel; turn it off in the panel settings or the toolbar popup if you’d rather control scrolling yourself.
 - Very short pages, `chrome://` pages, the Web Store, and Chrome's PDF viewer do not get a pill.
 
 ## Choosing voices
 
-Open **Voice** (top right) or click the **Voice** row in the sidebar.
+Open the LISTNR **toolbar popup** and pick a voice from the **Voice** menu. The same setting is available under the gear icon in the in-page player; the two stay in sync and apply to every page you listen to.
 
-- **Starter cards:** Heart, Bella, Michael, Emma.
-- **All voices:** every voice Kokoro exposes (language + description).
-- **Preview:** synthesizes a short sample through your local server.
-- **Use here:** changes this document’s voice immediately.
-- **Default:** sets the voice used for new imports.
-- **Browse:** opens the full voice list at any time.
+- The list comes from your local server (`/api/voices`).
+- If the server is offline, the popup falls back to the built-in Kokoro starter voices.
+- The voice is remembered in `chrome.storage.local`, so it survives reloads and applies to new pages.
 
 All voices share the same model. There is no per-voice model download in LISTNR, so adding voices is effectively free in size (0.5 MB per `.bin` in the Kokoro installation).
 
@@ -179,6 +161,30 @@ Suggested starting points:
 | `bf_emma` | UK female |
 | `bm_george` | UK male |
 
+<!-- -->
+
+## Connecting a hosted voice (optional)
+
+This version has no separate settings app, so a hosted provider is configured through the server environment. Stop the server and start it with the provider’s values:
+
+```bash
+TTS_PROVIDER=elevenlabs \
+TTS_API_KEY=your-key \
+TTS_BASE_URL=https://api.elevenlabs.io \
+TTS_MODEL=eleven_flash_v2_5 \
+npm start
+```
+
+`TTS_PROVIDER` accepts `kokoro`, `elevenlabs`, `openai`, or `custom`. The popup’s voice menu then lists that provider’s voices.
+
+Notes:
+
+- The key is only sent to the provider origin it was configured for. Keep it out of shell history if that matters (`env` files or Docker secrets work too).
+- With a hosted provider, the text you listen to is sent to that provider. For ElevenLabs, LISTNR sends the sentence plus the surrounding paragraph as `previous_text`/`next_text` for continuity, with `enable_logging=false` so the text is not retained in ElevenLabs history.
+- Cache files under `data/audio/` are keyed by provider, voice, and text, so switching providers never serves the wrong audio.
+- Back to free: restart with `TTS_PROVIDER=kokoro` and no key.
+- Costs: roughly 56k characters ≈ 1 hour of audio. See the cost table in [README.md](README.md#use-a-hosted-voice-optional).
+
 ---
 
 ## Data, backup, and deletion
@@ -187,14 +193,14 @@ Default data directory: **`./data/`** (or `/data` in Docker).
 
 | Path | Contents |
 | --- | --- |
-| `data/listnr.db` | Documents, extracted text, reading position, settings, audio-cache index |
+| `data/listnr.db` | Documents, extracted text, reading position, settings, voice-provider selection, **API key if you saved one**, audio-cache index |
 | `data/uploads/` | Original imported files |
-| `data/audio/` | Cached Kokoro speech, shared across documents by text+voice |
+| `data/audio/` | Cached speech, shared across documents by provider+text+voice |
 | `data/tessdata/` | Tesseract language cache |
 
-**Backup:** stop the server, then copy the whole `data/` directory. SQLite runs in WAL mode; a live copy can be inconsistent, so stop first.
+**Backup:** stop the server, then copy the whole `data/` directory. SQLite runs in WAL mode; a live copy can be inconsistent, so stop first. **A backup of `data/` includes your TTS API key if one is saved** — store it accordingly.
 
-**Delete:** use the Delete button in the library (removes the row, extracted text, position, and original upload). Cached speech files are shared and may remain until pruned. To erase everything, stop the server and remove `data/`.
+**Delete:** there is no library window in this version, so remove documents by deleting their rows from `data/listnr.db` while the server is stopped (or erase everything by removing `data/`). Cached speech files are shared and may remain until pruned.
 
 Audio cache limit: `AUDIO_CACHE_MAX_MB` (default 1024). It is pruned least-recently-used on writes.
 
@@ -213,9 +219,11 @@ LISTNR_DATA_DIR=/path/to/listnr-data npm start
 | `HOST` | `127.0.0.1` | Server bind address. Compose sets `0.0.0.0` inside the container and publishes only loopback on the host. |
 | `PORT` | `8787` | Local server port. The extension expects 8787. |
 | `LISTNR_DATA_DIR` | `./data` | SQLite, uploads, audio cache, OCR cache. |
-| `TTS_BASE_URL` | `http://127.0.0.1:8880/v1` | Local OpenAI-compatible Kokoro endpoint. |
-| `TTS_MODEL` | `kokoro` | Model name sent to the local endpoint. |
+| `TTS_PROVIDER` | `kokoro` | `kokoro`, `elevenlabs`, `openai`, or `custom`. |
+| `TTS_BASE_URL` | `http://127.0.0.1:8880/v1` | OpenAI-compatible endpoint (ignored for ElevenLabs unless overridden). |
+| `TTS_MODEL` | `kokoro` | Model name sent to the endpoint (`gpt-4o-mini-tts`, `eleven_flash_v2_5`, …). |
 | `TTS_VOICE` | `af_heart` | Default voice for new documents. |
+| `TTS_API_KEY` | *(none)* | Optional key for a hosted provider. |
 | `TTS_FORMAT` | `mp3` | Requested audio format. |
 | `TTS_TIMEOUT_MS` | `45000` | Per-sentence synthesis timeout. |
 | `TTS_VOICES` | curated list | Comma-separated `id` or `id:Label` fallback voices. |
@@ -223,7 +231,7 @@ LISTNR_DATA_DIR=/path/to/listnr-data npm start
 | `MAX_URL_MB` | `8` | URL-import response limit. |
 | `AUDIO_CACHE_MAX_MB` | `1024` | Speech-cache disk budget. |
 
-The extension is hard-wired to `http://127.0.0.1:8787`; if you change `PORT`, use the web UI or update `ui/app.js`.
+The extension is hard-wired to `http://127.0.0.1:8787`; if you change `PORT`, update `SERVER_URL` in `extension/background.js` and `ui/popup.js`.
 
 ---
 
@@ -259,7 +267,7 @@ The first request may take 10–60 seconds on CPU while the model loads. LISTNR 
 **“Local server offline” in the extension**
 - Is `npm start` or `docker compose up` running?
 - Does `curl http://127.0.0.1:8787/api/health` work?
-- Reload the extension page after starting the server.
+- Reload the extension after starting the server.
 
 **Chrome extension does nothing**
 - Load the repository folder (with `manifest.json` at the root), not `ui/`.
@@ -290,4 +298,7 @@ Private, loopback, link-local, and local hostnames are blocked on purpose, inclu
 - No authentication by design (single-user local tool). Do not expose the port publicly.
 - URL imports validate every redirect, resolve DNS, block private ranges, and pin the connection to the validated address to reduce DNS-rebinding risk.
 - Uploaded files get generated UUID names; original names are sanitized for display only.
-- The only outbound HTTP requests are URL imports you explicitly request. Voice, text, and audio stay local.
+- By default the only outbound HTTP requests are URL imports you explicitly request; voice, text, and audio stay local.
+- If you connect a hosted voice provider, speech requests go to that provider and carry only the sentence being read (plus paragraph context for ElevenLabs). Your library, uploads, and positions are never sent.
+- A saved API key lives in `data/listnr.db` at `0600`, is never returned by the API, and is attached only to requests sent to the origin it was saved for. Changing the provider or base URL deletes it. Backups of `data/` include it.
+- Changing the voice service does not require exposing the server; the browser still talks only to `127.0.0.1`.

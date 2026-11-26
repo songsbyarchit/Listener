@@ -55,6 +55,7 @@ export function loadConfig(env = process.env) {
     maxUrlBytes: numberFromEnv(env.MAX_URL_MB, 8) * 1024 * 1024,
     audioCacheMaxBytes: numberFromEnv(env.AUDIO_CACHE_MAX_MB, 1024) * 1024 * 1024,
     tts: {
+      provider: env.TTS_PROVIDER || 'kokoro',
       baseUrl: (env.TTS_BASE_URL || 'http://127.0.0.1:8880/v1').replace(/\/+$/, ''),
       model: env.TTS_MODEL || 'kokoro',
       voice: env.TTS_VOICE || 'af_heart',

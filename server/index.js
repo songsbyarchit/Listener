@@ -2,6 +2,10 @@ import { loadConfig } from './config.js';
 import { openDatabase } from './db.js';
 import { createApp } from './app.js';
 
+// The SQLite file can hold a user's TTS API key. Keep anything this process
+// creates (database, WAL sidecars, uploads) private to the current account.
+process.umask(0o077);
+
 const config = loadConfig();
 const db = openDatabase(config);
 const app = createApp({ config, db });
@@ -11,7 +15,7 @@ const server = app.listen(config.port, config.host, () => {
   console.log('  LISTNR server');
   console.log(`  Local API:   http://${config.host}:${config.port}`);
   console.log(`  Data:        ${config.dataDir}`);
-  console.log(`  Local voice: ${config.tts.baseUrl} (${config.tts.model}, ${config.tts.voice})`);
+  console.log(`  Voice:       ${config.tts.provider} at ${config.tts.baseUrl} (${config.tts.model}, ${config.tts.voice})`);
   console.log('');
   console.log('  Chrome extension: chrome://extensions → Load unpacked → this folder.');
   console.log('  Local voice server: docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest');
