@@ -7,11 +7,11 @@ enum FleetTheme {
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
         }
     }
-    static let paper = dynamic(light: NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 1),
+    static let paper = dynamic(light: NSColor(srgbRed: 0.949, green: 0.910, blue: 0.843, alpha: 1),
                                dark: NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 1))
-    static let card = dynamic(light: .white,
+    static let card = dynamic(light: NSColor(srgbRed: 1.0, green: 0.992, blue: 0.973, alpha: 1),
                               dark: NSColor(srgbRed: 0.114, green: 0.114, blue: 0.122, alpha: 1))
-    static let soft = dynamic(light: NSColor(srgbRed: 0.945, green: 0.937, blue: 0.918, alpha: 1),
+    static let soft = dynamic(light: NSColor(srgbRed: 0.910, green: 0.863, blue: 0.788, alpha: 1),
                               dark: NSColor(srgbRed: 0.161, green: 0.161, blue: 0.169, alpha: 1))
     static let ink = dynamic(light: NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 1),
                              dark: NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 1))
@@ -21,8 +21,8 @@ enum FleetTheme {
                               dark: NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 0.15))
     static let lineStrong = dynamic(light: NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 0.32),
                                     dark: NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 0.26))
-    static let accent = dynamic(light: NSColor(srgbRed: 0.949, green: 0.333, blue: 0.2, alpha: 1),
-                                dark: NSColor(srgbRed: 0.98, green: 0.42, blue: 0.28, alpha: 1))
+    static let accent = dynamic(light: NSColor(srgbRed: 0.310, green: 0.561, blue: 0.208, alpha: 1),
+                                dark: NSColor(srgbRed: 0.490, green: 0.733, blue: 0.290, alpha: 1))
     static let blue = dynamic(light: NSColor(srgbRed: 0.0, green: 0.443, blue: 0.89, alpha: 1),
                               dark: NSColor(srgbRed: 0.357, green: 0.549, blue: 1.0, alpha: 1))
 }

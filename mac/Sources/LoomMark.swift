@@ -12,9 +12,23 @@ enum LoomAppMark {
 final class LoomMarkView: NSView {
     private let kind: LoomAppMark
     private let size: CGFloat
-    private let ink = NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 1)
-    private let paper = NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 1)
-    private let orange = NSColor(srgbRed: 0.949, green: 0.333, blue: 0.2, alpha: 1)
+    private let paper = NSColor(srgbRed: 0.984, green: 0.914, blue: 0.808, alpha: 1)
+    private var base: NSColor {
+        switch kind {
+        case .speekr: return NSColor(srgbRed: 0.290, green: 0.090, blue: 0.282, alpha: 1)
+        case .listnr: return NSColor(srgbRed: 0.027, green: 0.212, blue: 0.173, alpha: 1)
+        case .writr: return NSColor(srgbRed: 0.012, green: 0.227, blue: 0.290, alpha: 1)
+        case .readr: return NSColor(srgbRed: 0.290, green: 0.063, blue: 0.161, alpha: 1)
+        }
+    }
+    private var accent: NSColor {
+        switch kind {
+        case .speekr: return NSColor(srgbRed: 0.910, green: 0.365, blue: 0.541, alpha: 1)
+        case .listnr: return NSColor(srgbRed: 0.545, green: 0.765, blue: 0.290, alpha: 1)
+        case .writr: return NSColor(srgbRed: 0.125, green: 0.718, blue: 0.745, alpha: 1)
+        case .readr: return NSColor(srgbRed: 0.953, green: 0.447, blue: 0.078, alpha: 1)
+        }
+    }
 
     init(kind: LoomAppMark, size: CGFloat = 30) {
         self.kind = kind
@@ -44,7 +58,7 @@ final class LoomMarkView: NSView {
         }
 
         let tile = path(NSRect(x: 0.5 * unit, y: 0.5 * unit, width: 29 * unit, height: 29 * unit), 8)
-        ink.setFill()
+        base.setFill()
         tile.fill()
         paper.withAlphaComponent(0.14).setStroke()
         tile.lineWidth = max(0.5, 0.6 * unit)
@@ -85,7 +99,7 @@ final class LoomMarkView: NSView {
                                                        height: height * unit),
                                    xRadius: barWidth * unit / 2,
                                    yRadius: barWidth * unit / 2)
-            (index == 2 ? orange : paper).setFill()
+            (index == 2 ? accent : paper).setFill()
             bar.fill()
             x += (barWidth + gap) * unit
         }

@@ -81,38 +81,41 @@
   --lnr-line: rgba(247, 245, 240, .13);
   --lnr-line-soft: rgba(247, 245, 240, .08);
   --lnr-hover: rgba(255, 255, 255, .08);
-  --lnr-accent: #F25533;
-  --lnr-on-accent: #F7F5F0;
-  --lnr-accent-soft: rgba(221, 85, 47, .15);
+  --lnr-accent: #5F9E35;
+  --lnr-accent-bright: #8BC34A;
+  --lnr-on-accent: #141415;
+  --lnr-accent-soft: rgba(95, 158, 53, .18);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
   :host {
-    --lnr-bg: #F7F5F0;
-    --lnr-tile: #FFFFFF;
-    --lnr-raised: #F1EEE7;
+    --lnr-bg: #F2E8D7;
+    --lnr-tile: #FFFDF8;
+    --lnr-raised: #E8DCC9;
     --lnr-ink: #141415;
     --lnr-muted: #6E6A64;
     --lnr-faint: #6E6A64;
     --lnr-line: rgba(20, 20, 21, .14);
     --lnr-line-soft: rgba(20, 20, 21, .08);
     --lnr-hover: rgba(20, 20, 21, .06);
-    --lnr-accent-soft: rgba(242, 85, 51, .12);
+    --lnr-accent: #4F8F35;
+    --lnr-accent-soft: rgba(79, 143, 53, .14);
     color-scheme: light;
   }
 }
 
 :host([data-theme="light"]) {
-  --lnr-bg: #F7F5F0;
-  --lnr-tile: #FFFFFF;
-  --lnr-raised: #F1EEE7;
+  --lnr-bg: #F2E8D7;
+  --lnr-tile: #FFFDF8;
+  --lnr-raised: #E8DCC9;
   --lnr-ink: #141415;
   --lnr-muted: #6E6A64;
   --lnr-faint: #6E6A64;
   --lnr-line: rgba(20, 20, 21, .14);
   --lnr-line-soft: rgba(20, 20, 21, .08);
   --lnr-hover: rgba(20, 20, 21, .06);
-  --lnr-accent-soft: rgba(242, 85, 51, .12);
+  --lnr-accent: #4F8F35;
+  --lnr-accent-soft: rgba(79, 143, 53, .14);
   color-scheme: light;
 }
 :host([data-theme="dark"]) {
@@ -1280,13 +1283,13 @@
           <header class="lnr-head">
             <div class="lnr-brand">
               <svg class="lnr-mark" viewBox="0 0 32 32" aria-hidden="true">
-                <rect x="1" y="1" width="30" height="30" rx="8" fill="#141415" stroke="rgba(247,245,240,.16)" />
-                <text x="16" y="21" text-anchor="middle" font-family="'Instrument Sans', sans-serif" font-size="17" font-weight="700" fill="#F7F5F0">L</text>
-                <rect x="10.4" y="23.4" width="1.5" height="2.2" rx=".75" fill="#F7F5F0" />
-                <rect x="13.2" y="22.6" width="1.5" height="3.2" rx=".75" fill="#F7F5F0" />
-                <rect x="16" y="21.8" width="1.5" height="4.2" rx=".75" fill="#F25533" />
-                <rect x="18.8" y="22.6" width="1.5" height="3.2" rx=".75" fill="#F7F5F0" />
-                <rect x="21.6" y="23.4" width="1.5" height="2.2" rx=".75" fill="#F7F5F0" />
+                <rect x="1" y="1" width="30" height="30" rx="8" fill="#07362C" stroke="rgba(247,245,240,.16)" />
+                <text x="16" y="21" text-anchor="middle" font-family="'Instrument Sans', sans-serif" font-size="17" font-weight="700" fill="#FBE9CE">L</text>
+                <rect x="10.4" y="23.4" width="1.5" height="2.2" rx=".75" fill="#FBE9CE" />
+                <rect x="13.2" y="22.6" width="1.5" height="3.2" rx=".75" fill="#FBE9CE" />
+                <rect x="16" y="21.8" width="1.5" height="4.2" rx=".75" fill="#8BC34A" />
+                <rect x="18.8" y="22.6" width="1.5" height="3.2" rx=".75" fill="#FBE9CE" />
+                <rect x="21.6" y="23.4" width="1.5" height="2.2" rx=".75" fill="#FBE9CE" />
               </svg>
               <span>listnr</span>
             </div>
@@ -2057,7 +2060,7 @@
       sheet.replaceSync(
         '::highlight(' +
           HIGHLIGHT_NAME +
-          '){background-color:rgba(242,85,51,.22);color:#F7F5F0;border-radius:2px;}'
+          '){background-color:rgba(139,195,74,.26);color:#141415;border-radius:2px;}'
       );
       document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
       state.highlightSheet = sheet;

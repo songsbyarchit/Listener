@@ -19,7 +19,7 @@ zip -qr "$OUT/listnr-server-$VERSION.zip" \
   Dockerfile docker-entrypoint.sh docker-compose.yml README.md INSTALL.md docs
 
 zip -qr "$OUT/listnr-source-$VERSION.zip" . \
-  -x 'node_modules/*' 'data/*' 'dist/*' '.git/*' '*.DS_Store' '.env' '.env.*'
+  -x 'node_modules/*' 'data/*' 'dist/*' 'mac/build/*' '.git/*' '*.DS_Store' '.env' '.env.*'
 
 (
   cd "$OUT"
