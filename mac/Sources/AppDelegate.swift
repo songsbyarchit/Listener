@@ -34,6 +34,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey = GlobalHotkey(keyCode: 37, modifiers: UInt32(optionKey)) { [weak self] in
             self?.readSelection()
         }
+        updateHotkeyForFrontmost()
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateHotkeyForFrontmost()
+        }
         buildStatusItem()
         applyStoredAppearance()
         NSApp.setActivationPolicy(.accessory)
@@ -82,13 +90,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
+    private func updateHotkeyForFrontmost() {
+        // Chrome owns Option L for the extension. Remove the desktop hotkey
+        // there so the two readers cannot consume the same keystroke.
+        let chrome = NSWorkspace.shared.frontmostApplication?.bundleIdentifier?
+            .lowercased().contains("chrome") ?? false
+        hotkey?.setEnabled(!chrome)
+    }
+
     @objc private func readSelection() {
-        // Chrome owns Option L for the extension so the two readers do not
-        // both start on the same keystroke.
-        if let bundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier?.lowercased(),
-           bundle.contains("chrome") {
-            return
-        }
         guard let text = SelectionReader.selectedText() else {
             if !AXIsProcessTrusted() {
                 hud.showError("Grant Accessibility to listnr, then try again.")
