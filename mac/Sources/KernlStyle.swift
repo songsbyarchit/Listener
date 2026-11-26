@@ -461,3 +461,105 @@ enum KernlWindowSize {
         ])
     }
 }
+
+/// The small pill left behind when a quick window tucks itself away. One
+/// click brings the window back; untouched, it leaves after a few seconds.
+final class KernlRestorePill {
+    var onRestore: (() -> Void)?
+    private let panel: NSPanel
+    private var hideWork: DispatchWorkItem?
+
+    init(title: String) {
+        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 132, height: 36),
+                        styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false)
+        panel.isFloatingPanel = true
+        panel.becomesKeyOnlyIfNeeded = true
+        panel.hidesOnDeactivate = false
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = true
+        let card = KernlPanelCard()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        panel.contentView = card
+        let button = NSButton(title: title, target: nil, action: nil)
+        button.isBordered = false
+        button.image = NSImage(systemSymbolName: "arrow.up.left", accessibilityDescription: nil)
+        button.imagePosition = .imageLeading
+        button.attributedTitle = NSAttributedString(string: title, attributes: [
+            .font: Type.sans(13, .medium), .foregroundColor: KernlTheme.ink
+        ])
+        button.contentTintColor = KernlTheme.accent
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.target = self
+        button.action = #selector(restore)
+        card.addSubview(button)
+        NSLayoutConstraint.activate([
+            button.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            button.centerYAnchor.constraint(equalTo: card.centerYAnchor)
+        ])
+    }
+
+    /// Shows the pill at the bottom-right corner of where the window was.
+    func show(near frame: NSRect, seconds: Double = 6) {
+        panel.setFrameOrigin(NSPoint(x: frame.maxX - panel.frame.width, y: frame.minY))
+        panel.orderFrontRegardless()
+        hideWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.panel.orderOut(nil) }
+        hideWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
+    }
+
+    func hide() {
+        hideWork?.cancel()
+        panel.orderOut(nil)
+    }
+
+    @objc private func restore() {
+        hide()
+        onRestore?()
+    }
+}
+
+/// Places a quick window in the bottom-right corner without covering another
+/// Kernl app's floating window, so listnr, readr and writr can be open at once.
+enum KernlPlacement {
+    static let suiteOwners: Set<String> = ["listnr", "readr", "writr", "Readr", "Writr", "Listnr", "Speakr", "speakr"]
+
+    /// Frames of other suite apps' floating windows on screen, in AppKit coordinates.
+    static func otherSuiteFrames(on screen: NSScreen) -> [NSRect] {
+        let me = ProcessInfo.processInfo.processIdentifier
+        let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? screen.frame.height
+        return list.compactMap { info in
+            guard let owner = info[kCGWindowOwnerName as String] as? String, suiteOwners.contains(owner),
+                  (info[kCGWindowOwnerPID as String] as? Int32) != me,
+                  (info[kCGWindowLayer as String] as? Int ?? 0) > 0,
+                  let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
+                  let width = bounds["Width"], let height = bounds["Height"], width > 60, height > 30 else { return nil }
+            // Quartz has its origin at the top left; AppKit at the bottom left.
+            let rect = NSRect(x: bounds["X"] ?? 0, y: primaryHeight - (bounds["Y"] ?? 0) - height, width: width, height: height)
+            return rect.intersects(screen.frame) ? rect : nil
+        }
+    }
+
+    /// The bottom-right spot for `size`, moved left (or up) past other suite windows.
+    static func cornerOrigin(for size: NSSize, on screen: NSScreen, margin: CGFloat = 20) -> NSPoint {
+        let visible = screen.visibleFrame
+        var frame = NSRect(x: visible.maxX - size.width - margin, y: visible.minY + margin,
+                           width: size.width, height: size.height)
+        let others = otherSuiteFrames(on: screen)
+        for _ in 0..<4 {
+            guard let blocker = others.first(where: { $0.insetBy(dx: -6, dy: -6).intersects(frame) }) else { break }
+            let left = blocker.minX - size.width - 12
+            if left >= visible.minX + margin {
+                frame.origin.x = left
+            } else {
+                frame.origin = NSPoint(x: visible.maxX - size.width - margin, y: blocker.maxY + 12)
+            }
+        }
+        frame.origin.y = min(frame.origin.y, visible.maxY - size.height - margin)
+        return frame.origin
+    }
+}

@@ -356,8 +356,9 @@ final class PlayerHUD: NSPanel {
 
     private func position() {
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
-        guard let visible = screen?.visibleFrame else { return }
-        setFrameOrigin(NSPoint(x: visible.maxX - frame.width - 20, y: visible.minY + 20))
+        guard let screen else { return }
+        // Clear of readr's bubble or writr's window if they are already open.
+        setFrameOrigin(KernlPlacement.cornerOrigin(for: frame.size, on: screen))
     }
 
     private func setSpeedLabel(_ speed: Float) {
