@@ -14,6 +14,7 @@ final class LoomMarkView: NSView {
     private let size: CGFloat
     private let ink = NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 1)
     private let paper = NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 1)
+    private let orange = NSColor(srgbRed: 0.949, green: 0.333, blue: 0.2, alpha: 1)
 
     init(kind: LoomAppMark, size: CGFloat = 30) {
         self.kind = kind
@@ -54,69 +55,39 @@ final class LoomMarkView: NSView {
             path.fill()
         }
 
+        let letter: String
         switch kind {
-        case .speekr:
-            let bubble = path(rect(6, 6, 18, 15, 5), 5)
-            fill(bubble, paper)
-            let tail = NSBezierPath()
-            tail.move(to: NSPoint(x: 9 * unit, y: 10 * unit))
-            tail.line(to: NSPoint(x: 8 * unit, y: 4.5 * unit))
-            tail.line(to: NSPoint(x: 13 * unit, y: 9 * unit))
-            tail.close()
-            fill(tail, paper)
-            for (i, h) in [4, 8, 10, 8, 4].enumerated() {
-                let x = 9.5 + CGFloat(i) * 2.8
-                let bar = path(rect(x, 13.5 - CGFloat(h) / 2, 1.5, CGFloat(h), 0.75), 0.75)
-                fill(bar, ink)
-            }
+        case .speekr: letter = "S"
+        case .listnr: letter = "L"
+        case .writr: letter = "W"
+        case .readr: letter = "R"
+        }
+        let font = NSFont(name: "InstrumentSans-Regular_Bold", size: 17 * unit)
+            ?? NSFont.systemFont(ofSize: 17 * unit, weight: .bold)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: paper
+        ]
+        let text = letter as NSString
+        let textSize = text.size(withAttributes: attributes)
+        text.draw(at: NSPoint(x: (s - textSize.width) / 2,
+                              y: 2 * unit + max(0, (14 * unit - textSize.height) / 2)),
+                  withAttributes: attributes)
 
-        case .writr:
-            let page = path(rect(7, 4, 16, 22, 3), 3)
-            fill(page, paper)
-            let fold = NSBezierPath()
-            fold.move(to: NSPoint(x: 23 * unit, y: 4 * unit))
-            fold.line(to: NSPoint(x: 18 * unit, y: 4 * unit))
-            fold.line(to: NSPoint(x: 23 * unit, y: 9 * unit))
-            fold.close()
-            fill(fold, ink)
-            for y in [10.5, 14.5, 18.5] as [CGFloat] {
-                fill(path(rect(10, y, 9, 1.4, 0.7), 0.7), ink)
-            }
-            fill(path(rect(10, 22.4, 5, 1.4, 0.7), 0.7), ink)
-
-        case .readr:
-            let left = NSBezierPath()
-            left.move(to: NSPoint(x: 15 * unit, y: 8 * unit))
-            left.line(to: NSPoint(x: 6 * unit, y: 6 * unit))
-            left.line(to: NSPoint(x: 6 * unit, y: 21 * unit))
-            left.line(to: NSPoint(x: 15 * unit, y: 24 * unit))
-            left.close()
-            fill(left, paper)
-            let right = NSBezierPath()
-            right.move(to: NSPoint(x: 15 * unit, y: 8 * unit))
-            right.line(to: NSPoint(x: 24 * unit, y: 6 * unit))
-            right.line(to: NSPoint(x: 24 * unit, y: 21 * unit))
-            right.line(to: NSPoint(x: 15 * unit, y: 24 * unit))
-            right.close()
-            fill(right, paper)
-            fill(path(rect(14.5, 7.5, 1.2, 17, 0.6), 0.6), ink)
-            for y in [11, 15, 19] as [CGFloat] {
-                fill(path(rect(8, y, 5, 1.2, 0.6), 0.6), ink)
-                fill(path(rect(17, y, 5, 1.2, 0.6), 0.6), ink)
-            }
-
-        case .listnr:
-            let page = path(rect(7, 4, 16, 22, 3), 3)
-            fill(page, paper)
-            for y in [9, 13, 17] as [CGFloat] {
-                fill(path(rect(10, y, 9, 1.4, 0.7), 0.7), ink)
-            }
-            let play = NSBezierPath()
-            play.move(to: NSPoint(x: 12 * unit, y: 18.5 * unit))
-            play.line(to: NSPoint(x: 12 * unit, y: 24.5 * unit))
-            play.line(to: NSPoint(x: 19 * unit, y: 21.5 * unit))
-            play.close()
-            fill(play, ink)
+        let heights: [CGFloat] = [2.2, 3.2, 4.4, 3.2, 2.2]
+        let barWidth: CGFloat = 1.2
+        let gap: CGFloat = 1.2
+        let total = barWidth * CGFloat(heights.count) + gap * CGFloat(heights.count - 1)
+        var x = (s - total) / 2
+        for (index, height) in heights.enumerated() {
+            let bar = NSBezierPath(roundedRect: NSRect(x: x, y: 23.2 * unit,
+                                                       width: barWidth * unit,
+                                                       height: height * unit),
+                                   xRadius: barWidth * unit / 2,
+                                   yRadius: barWidth * unit / 2)
+            (index == 2 ? orange : paper).setFill()
+            bar.fill()
+            x += (barWidth + gap) * unit
         }
     }
 }

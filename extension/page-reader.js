@@ -84,6 +84,7 @@
   --lnr-accent: #F25533;
   --lnr-on-accent: #F7F5F0;
   --lnr-accent-soft: rgba(221, 85, 47, .15);
+  color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
   :host {
@@ -97,6 +98,7 @@
     --lnr-line-soft: rgba(20, 20, 21, .08);
     --lnr-hover: rgba(20, 20, 21, .06);
     --lnr-accent-soft: rgba(242, 85, 51, .12);
+    color-scheme: light;
   }
 }
 
@@ -111,6 +113,7 @@
   --lnr-line-soft: rgba(20, 20, 21, .08);
   --lnr-hover: rgba(20, 20, 21, .06);
   --lnr-accent-soft: rgba(242, 85, 51, .12);
+  color-scheme: light;
 }
 :host([data-theme="dark"]) {
   --lnr-bg: #0B0B0C;
@@ -123,6 +126,7 @@
   --lnr-line-soft: rgba(247, 245, 240, .08);
   --lnr-hover: rgba(255, 255, 255, .08);
   --lnr-accent-soft: rgba(221, 85, 47, .15);
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 
@@ -1277,10 +1281,12 @@
             <div class="lnr-brand">
               <svg class="lnr-mark" viewBox="0 0 32 32" aria-hidden="true">
                 <rect x="1" y="1" width="30" height="30" rx="8" fill="#141415" stroke="rgba(247,245,240,.16)" />
-                <rect x="8" y="6" width="16" height="20" rx="3" fill="#F7F5F0" />
-                <rect x="11" y="10" width="10" height="1.6" rx=".8" fill="#141415" />
-                <rect x="11" y="14" width="8" height="1.6" rx=".8" fill="#141415" />
-                <path d="M13 18.5 19 21.5 13 24.5Z" fill="#141415" />
+                <text x="16" y="21" text-anchor="middle" font-family="'Instrument Sans', sans-serif" font-size="17" font-weight="700" fill="#F7F5F0">L</text>
+                <rect x="10.4" y="23.4" width="1.5" height="2.2" rx=".75" fill="#F7F5F0" />
+                <rect x="13.2" y="22.6" width="1.5" height="3.2" rx=".75" fill="#F7F5F0" />
+                <rect x="16" y="21.8" width="1.5" height="4.2" rx=".75" fill="#F25533" />
+                <rect x="18.8" y="22.6" width="1.5" height="3.2" rx=".75" fill="#F7F5F0" />
+                <rect x="21.6" y="23.4" width="1.5" height="2.2" rx=".75" fill="#F7F5F0" />
               </svg>
               <span>listnr</span>
             </div>

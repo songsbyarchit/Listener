@@ -83,6 +83,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func readSelection() {
+        // Chrome owns Option L for the extension so the two readers do not
+        // both start on the same keystroke.
+        if let bundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier?.lowercased(),
+           bundle.contains("chrome") {
+            return
+        }
         guard let text = SelectionReader.selectedText() else {
             if !AXIsProcessTrusted() {
                 hud.showError("Grant Accessibility to listnr, then try again.")

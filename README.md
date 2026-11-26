@@ -2,13 +2,13 @@
 
 **A local-first page reader for Chrome — it reads the page you are on, without leaving it.**
 
-A small **Listen** pill appears on readable web pages. One click captures the page you are actually looking at — including pages behind a login — and plays it **without leaving the page**: an in-page panel gives you play/pause, sentence skip, speed, voice, volume, and pauses, while the current sentence is highlighted directly on the page. The LISTNR **toolbar popup** holds the shared playback settings — voice, speed, volume, pauses, and follow-highlight — and every page you listen to uses them. LISTNR reads with a **local Kokoro voice** in sentence-sized chunks, keeps your reading position in SQLite, and never sends your library to a server you do not own.
+A small **Listen** pill appears on readable web pages. One click captures the page you are actually looking at — including pages behind a login — and plays it **without leaving the page**: an in-page panel gives you play/pause, sentence skip, speed, voice, volume, and pauses, while the current sentence is highlighted directly on the page. The listnr **toolbar popup** holds the shared playback settings — voice, speed, volume, pauses, and follow-highlight — and every page you listen to uses them. listnr reads with a **local Kokoro voice** in sentence-sized chunks, keeps your reading position in SQLite, and never sends your library to a server you do not own.
 
 No account. No subscription. No telemetry. Local voices by default — and if you want a hosted voice, you can bring your own ElevenLabs or OpenAI-compatible key.
 
 > **This version is extension-only.** There is no separate library/reader window or local web app: the toolbar popup and the in-page player are the whole UI. The standalone app may return in a later version.
 
-![LISTNR in-page player](docs/screenshots/page-player.png)
+![listnr in-page player](docs/screenshots/page-player.png)
 
 ## System-wide listnr
 
@@ -32,7 +32,7 @@ cd Listener
 docker compose up -d --build
 ```
 
-Load this folder as an unpacked Chrome extension at `chrome://extensions`, then click the LISTNR toolbar icon for playback settings and **Read this page**.
+Load this folder as an unpacked Chrome extension at `chrome://extensions`, then click the listnr toolbar icon for playback settings and **Read this page**.
 
 **Option B — Node + your own Kokoro server:**
 
@@ -55,10 +55,10 @@ Full instructions, Docker notes, Apple Silicon guidance, backup, and troubleshoo
   - **In-page player** with play/pause, sentence skip, stop, speed, voice, volume, and pauses
   - **Highlight overlay** follows the current sentence directly on the page
   - Minimize keeps playing
-  - `Alt+Shift+L` (Option+Shift+L on macOS) starts it from the keyboard
+  - `Option+L` starts it from the keyboard
   - The captured page is stored server-side, so its position and cached audio survive reloads
 - **Toolbar popup**
-  - **Read this page** starts LISTNR on the current tab
+  - **Read this page** starts listnr on the current tab
   - Shared playback settings — voice, speed, volume, sentence/paragraph pauses, follow-highlight — saved in `chrome.storage.local` and applied to every page
   - Live local-server status and the voice list
 - **Listening**
@@ -99,12 +99,12 @@ From the official ONNX model repository:
 | Every individual voice (`voices/*.bin`) | **0.5 MB** |
 | Four starters (Heart, Bella, Michael, Emma) | **~2 MB** |
 | All 54 voices | **~27 MB** |
-| LISTNR extension zip | **55 KB** |
-| LISTNR server source zip | **~1.2 MB** |
+| listnr extension zip | **55 KB** |
+| listnr server source zip | **~1.2 MB** |
 | Installed Node dependencies (PDF/EPUB/HTML/OCR) | **~226 MB** |
 | Kokoro-FastAPI Docker image | large (Python + ONNX runtime), pulled once |
 
-So the “50–80 MB app” intuition is right — but that 80 MB is the **shared model**, not three or four speakers. Choosing four voices costs about 2 MB because they reuse the same model. In LISTNR, voices live in the Kokoro server; the popup lists every voice the server exposes, and adding one does not grow the extension.
+So the “50–80 MB app” intuition is right — but that 80 MB is the **shared model**, not three or four speakers. Choosing four voices costs about 2 MB because they reuse the same model. In listnr, voices live in the Kokoro server; the popup lists every voice the server exposes, and adding one does not grow the extension.
 
 Suggested starters:
 
@@ -116,13 +116,13 @@ Suggested starters:
 | `bf_emma` | UK female |
 | `bm_george` | UK male |
 
-Pick a voice in the LISTNR toolbar popup (or the player's gear menu). The choice is shared across every page; no per-document voice setup is needed.
+Pick a voice in the listnr toolbar popup (or the player's gear menu). The choice is shared across every page; no per-document voice setup is needed.
 
-> macOS system voices are not used here. If Chrome’s built-in voice sounds robotic, that is usually a compact OS voice — LISTNR avoids it by using Kokoro. You can still install macOS Premium/Enhanced voices for other apps.
+> macOS system voices are not used here. If Chrome’s built-in voice sounds robotic, that is usually a compact OS voice — listnr avoids it by using Kokoro. You can still install macOS Premium/Enhanced voices for other apps.
 
 ## Use a hosted voice (optional)
 
-LISTNR ships with **no key and no hosted voice**. If you would rather use ElevenLabs, OpenAI, or any OpenAI-compatible endpoint, configure the server environment — there is no hosted-voice screen in this extension-only build:
+listnr ships with **no key and no hosted voice**. If you would rather use ElevenLabs, OpenAI, or any OpenAI-compatible endpoint, configure the server environment — there is no hosted-voice screen in this extension-only build:
 
 1. Stop the server.
 2. Start it with `TTS_PROVIDER` (`elevenlabs`, `openai`, or `custom`), `TTS_API_KEY`, and, where needed, `TTS_BASE_URL` / `TTS_MODEL`.
@@ -132,9 +132,9 @@ See [INSTALL.md](INSTALL.md#connecting-a-hosted-voice-optional) for the exact co
 
 **How the key is stored.** With environment variables the key lives only in the process environment (or your `.env`/Compose configuration). If a key was saved by an earlier version, it lives in `data/listnr.db`, readable only by your account (`0600`), and is never returned by the API. It is sent only to the provider origin it was saved for.
 
-**What leaves the machine.** With a hosted provider, the text you listen to is sent to that provider. Nothing else is. LISTNR still speaks sentence by sentence so playback, highlighting, and resume-at-the-exact-sentence keep working; for ElevenLabs it also sends the surrounding paragraph as `previous_text`/`next_text` so each sentence is voiced in the context of the passage (that context is not spoken and is not billed). ElevenLabs requests set `enable_logging=false` so the text is not kept in its history.
+**What leaves the machine.** With a hosted provider, the text you listen to is sent to that provider. Nothing else is. listnr still speaks sentence by sentence so playback, highlighting, and resume-at-the-exact-sentence keep working; for ElevenLabs it also sends the surrounding paragraph as `previous_text`/`next_text` so each sentence is voiced in the context of the passage (that context is not spoken and is not billed). ElevenLabs requests set `enable_logging=false` so the text is not kept in its history.
 
-**What it costs.** Roughly 56,000 characters is one hour of audio. LISTNR caches each synthesized sentence under `data/audio`, so re-listening is free and only new text or a new voice bills again.
+**What it costs.** Roughly 56,000 characters is one hour of audio. listnr caches each synthesized sentence under `data/audio`, so re-listening is free and only new text or a new voice bills again.
 
 | Option | Price | 10k-word article (~60k chars) | 90k-word book (~550k chars) |
 | --- | --- | ---: | ---: |
@@ -263,7 +263,7 @@ server/
   files.js                 Upload storage, safe names, limits
 tests/                     node:test suites and fixtures
 Dockerfile                 Node 22 server image
-docker-compose.yml         LISTNR + Kokoro CPU
+docker-compose.yml         listnr + Kokoro CPU
 scripts/package-release.sh Release archives
 docs/screenshots/          README images
 ```
