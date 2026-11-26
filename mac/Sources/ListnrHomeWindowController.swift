@@ -210,6 +210,7 @@ final class ListnrHomeWindowController {
         var facts: [(String, String)] = [
             ("All reads", "\(reads.count)"),
             ("Last 7 days", "\(reads.filter { $0.date >= week }.count)"),
+            ("Tab switches saved", "\(reads.count), about \(Int((Double(reads.count) * 20 / 60).rounded())) min at 20 s each"),
             ("Read aloud", "\(characters) characters, about \(max(0, characters / 900)) minutes")
         ]
         if !bySource.isEmpty {
