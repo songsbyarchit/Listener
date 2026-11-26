@@ -1,13 +1,13 @@
 #!/bin/bash
-# Sign a built Speekr.app with the stable local identity when it exists,
+# Sign a built app bundle with the stable local identity when it exists,
 # otherwise fall back to ad-hoc signing.
 set -euo pipefail
 
-APP="${1:?usage: sign.sh /path/to/Speekr.app}"
-BUNDLE_ID="${BUNDLE_ID:-com.archit.speekr}"
+APP="${1:?usage: sign.sh /path/to/App.app}"
+BUNDLE_ID="${BUNDLE_ID:-com.archit.listnr}"
 IDENTITY="Speekr Local Signing"
-KEYCHAIN="$HOME/Library/Keychains/speekr-signing.keychain-db"
-PW_FILE="$HOME/.speekr/signing/keychain-password"
+KEYCHAIN="$HOME/Library/Keychains/speakr-signing.keychain-db"
+PW_FILE="$HOME/.speakr/signing/keychain-password"
 
 if [[ -f "$KEYCHAIN" && -f "$PW_FILE" ]]; then
   security unlock-keychain -p "$(cat "$PW_FILE")" "$KEYCHAIN" >/dev/null 2>&1 || true

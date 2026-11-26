@@ -57,6 +57,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.applyStoredAppearance()
         }
         NSApp.setActivationPolicy(.accessory)
+
+        if CommandLine.arguments.contains("--settings") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.homeWindow.showSettings()
+            }
+        } else if CommandLine.arguments.contains("--open-main") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.openWindow()
+            }
+        }
     }
 
     private func buildStatusItem() {
@@ -67,6 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(item("Open listnr", #selector(openWindow)))
+        menu.addItem(item("Settings…", #selector(openSettings)))
         menu.addItem(item("Read selection  ⌥L", #selector(readSelection)))
         menu.addItem(item("Read clipboard", #selector(readClipboard)))
         pauseItem = item("Pause", #selector(togglePause))
@@ -143,6 +154,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         homeWindow.show()
         statusItem.button?.image = NSImage(systemSymbolName: "speaker.wave.2.fill", accessibilityDescription: "listnr")
         statusItem.button?.image?.isTemplate = true
+    }
+
+    @objc private func openSettings() {
+        homeWindow.showSettings()
     }
 
     @objc private func togglePause() { speaker.togglePause() }

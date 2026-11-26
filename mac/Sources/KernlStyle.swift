@@ -22,7 +22,7 @@ enum KernlTheme {
     static let lineStrong = dynamic(light: NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 0.32),
                                     dark: NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 0.26))
     static let accent = dynamic(light: NSColor(srgbRed: 0.067, green: 0.341, blue: 0.298, alpha: 1),
-                                dark: NSColor(srgbRed: 0.067, green: 0.341, blue: 0.298, alpha: 1))
+                                dark: NSColor(srgbRed: 0.545, green: 0.765, blue: 0.290, alpha: 1))
     static let blue = accent
 }
 
@@ -34,6 +34,25 @@ final class KernlBackdrop: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
     override func updateLayer() { layer?.backgroundColor = KernlTheme.paper.cgColor }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+}
+
+final class KernlHairlineView: NSView {
+    override var wantsUpdateLayer: Bool { true }
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        translatesAutoresizingMaskIntoConstraints = false
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func updateLayer() { layer?.backgroundColor = KernlTheme.line.cgColor }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
 }
 
 final class KernlCard: NSView {
@@ -59,6 +78,75 @@ final class KernlCard: NSView {
     override func updateLayer() {
         layer?.backgroundColor = KernlTheme.card.cgColor
         layer?.borderColor = KernlTheme.line.cgColor
+    }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
+}
+
+
+/// A wrapping proof strip: equal tiles that fall into balanced rows when the
+/// window narrows. Cards are frame-laid so the grid can reflow on resize.
+final class KernlStatGrid: NSView {
+    private let cards: [KernlCard]
+    private let spacing: CGFloat
+    private let minTileWidth: CGFloat
+    private let tileHeight: CGFloat
+    private var heightConstraint: NSLayoutConstraint!
+    private var columns = 0
+    private var rows = 0
+
+    init(_ items: [(label: String, value: String, foot: String)],
+         minTileWidth: CGFloat = 136, tileHeight: CGFloat = 116, spacing: CGFloat = 12) {
+        self.spacing = spacing
+        self.minTileWidth = minTileWidth
+        self.tileHeight = tileHeight
+        self.cards = items.map { item in
+            let count = item.value.count
+            let valueSize: CGFloat = count <= 5 ? 29 : (count <= 8 ? 24 : (count <= 10 ? 19 : 17))
+            let value = fleetLabel(item.value, size: valueSize, weight: .medium, color: KernlTheme.ink, lines: 1)
+            value.cell?.lineBreakMode = .byTruncatingTail
+            let label = fleetLabel(item.label, size: 11, weight: .medium, color: KernlTheme.muted, lines: 1)
+            let foot = fleetLabel(item.foot, size: 11, color: KernlTheme.muted, lines: 2)
+            let card = KernlCard(content: fleetVStack([value, label, foot], spacing: 4),
+                                 padding: NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16))
+            card.translatesAutoresizingMaskIntoConstraints = true
+            card.autoresizingMask = []
+            return card
+        }
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        for card in cards { addSubview(card) }
+        heightConstraint = heightAnchor.constraint(equalToConstant: tileHeight)
+        heightConstraint.isActive = true
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var isFlipped: Bool { true }
+
+    override func layout() {
+        super.layout()
+        let width = bounds.width
+        guard width > 0, !cards.isEmpty else { return }
+        var cols = max(1, min(cards.count, Int((width + spacing) / (minTileWidth + spacing))))
+        if cols > 2, cards.count % cols == 1 { cols -= 1 }
+        let rowCount = Int(ceil(Double(cards.count) / Double(cols)))
+        let cardWidth = max(0, (width - CGFloat(cols - 1) * spacing) / CGFloat(cols))
+        for (index, card) in cards.enumerated() {
+            let column = index % cols
+            let row = index / cols
+            card.frame = NSRect(x: CGFloat(column) * (cardWidth + spacing),
+                                y: CGFloat(row) * (tileHeight + spacing),
+                                width: cardWidth,
+                                height: tileHeight)
+        }
+        if cols != columns || rowCount != rows {
+            columns = cols
+            rows = rowCount
+            heightConstraint.constant = CGFloat(rowCount) * tileHeight + CGFloat(rowCount - 1) * spacing
+        }
     }
 }
 
@@ -193,6 +281,10 @@ final class KernlButton: NSButton {
             layer.borderColor = KernlTheme.lineStrong.cgColor
         }
     }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
 }
 
 func fleetButton(_ title: String, primary: Bool = false,
@@ -260,6 +352,10 @@ final class KernlPanelCard: NSView {
     override func updateLayer() {
         layer?.backgroundColor = KernlTheme.card.cgColor
         layer?.borderColor = KernlTheme.line.cgColor
+    }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
     }
 }
 

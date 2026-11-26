@@ -73,12 +73,15 @@ final class KernlSuiteMarkView: NSView {
                                 xRadius: s * 0.28, yRadius: s * 0.28)
         NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 1).setFill()
         tile.fill()
-        // Four diagonal bands, one for each app, in grays.
+
+        NSGraphicsContext.saveGraphicsState()
+        tile.addClip()
+        // Four quiet diagonal bands, one for each app, inside the tile.
         let bandColors = [
-            NSColor(white: 0.24, alpha: 1),
-            NSColor(white: 0.38, alpha: 1),
-            NSColor(white: 0.52, alpha: 1),
-            NSColor(white: 0.68, alpha: 1)
+            NSColor(white: 0.13, alpha: 1),
+            NSColor(white: 0.17, alpha: 1),
+            NSColor(white: 0.21, alpha: 1),
+            NSColor(white: 0.26, alpha: 1)
         ]
         for (index, color) in bandColors.enumerated() {
             let path = NSBezierPath()
@@ -91,7 +94,8 @@ final class KernlSuiteMarkView: NSView {
             color.setFill()
             path.fill()
         }
-        // A cream hexagon sits over the four bands.
+
+        // A cream hexagon sits over the bands.
         let hex = NSBezierPath()
         let cx = s / 2, cy = s / 2, r = s * 0.26
         for i in 0..<6 {
@@ -105,6 +109,11 @@ final class KernlSuiteMarkView: NSView {
         NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 1).setStroke()
         hex.lineWidth = max(1, s * 0.035)
         hex.stroke()
+        NSGraphicsContext.restoreGraphicsState()
+
+        NSColor(srgbRed: 0.984, green: 0.914, blue: 0.808, alpha: 0.14).setStroke()
+        tile.lineWidth = max(1, s * 0.02)
+        tile.stroke()
     }
 }
 
@@ -144,10 +153,8 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         let root = KernlBackdrop()
         window.contentView = root
 
-        let sidebar = NSView()
+        let sidebar = KernlBackdrop()
         sidebar.translatesAutoresizingMaskIntoConstraints = false
-        sidebar.wantsLayer = true
-        sidebar.layer?.backgroundColor = KernlTheme.paper.cgColor
 
         let name = fleetLabel(appName, size: 20, weight: .semibold, color: KernlTheme.ink, lines: 1)
         let tag = fleetLabel(tagline, size: 12, color: KernlTheme.muted, lines: 2)
@@ -167,10 +174,7 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         nav.translatesAutoresizingMaskIntoConstraints = false
         sidebar.addSubview(nav)
 
-        let separator = NSView()
-        separator.wantsLayer = true
-        separator.layer?.backgroundColor = KernlTheme.line.cgColor
-        separator.translatesAutoresizingMaskIntoConstraints = false
+        let separator = KernlHairlineView()
 
         contentHost.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(sidebar)
@@ -257,10 +261,7 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
     }
 
     static func statRow(_ cards: [(label: String, value: String, foot: String)]) -> NSView {
-        let views = cards.map { statCard(label: $0.label, value: $0.value, foot: $0.foot) }
-        let row = fleetHStack(views, spacing: 12, alignment: .top)
-        for view in views { view.widthAnchor.constraint(equalTo: views[0].widthAnchor).isActive = true }
-        return row
+        KernlStatGrid(cards)
     }
 
     static func linkButton(_ title: String, target: AnyObject, action: Selector) -> NSButton {
@@ -294,9 +295,12 @@ final class KernlPage: NSView {
             fleetLabel("All four apps, one place. Settings live inside each app.",
                        size: 15, color: KernlTheme.muted, lines: 0)
         ], spacing: 6)
+        words.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        words.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         let header = fleetHStack([mark, words], spacing: 14, alignment: .top)
+        header.distribution = .fill
         let stats = KernlAppShell.statRow([
-            ("speekr", "\(Self.count("~/.speekr/usage.json"))", "dictations"),
+            ("speakr", "\(Self.count("~/.speakr/usage.json"))", "dictations"),
             ("writr", "\(Self.count("~/.writr/drafts.json"))", "drafts"),
             ("readr", "\(Self.count("~/.readr/lessons.json"))", "lessons"),
             ("listnr", "\(Self.count("~/.listnr/reads.json"))", "reads")
@@ -308,7 +312,7 @@ final class KernlPage: NSView {
         ], spacing: 10))
         let shortcuts = KernlCard(content: fleetVStack([
             fleetLabel("Shortcuts", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1),
-            fleetLabel("Fn  hold to dictate\n⌥S  open speekr settings\n⌥W  draft in place\n⌥R  explain the screen\n⌥L  read selected text", size: 13, color: KernlTheme.muted, lines: 0)
+            fleetLabel("Fn  hold to dictate\n⌥S  open speakr settings\n⌥W  draft in place\n⌥R  explain the screen\n⌥L  read selected text", size: 13, color: KernlTheme.muted, lines: 0)
         ], spacing: 10))
         let apps = KernlAppsCard()
         let ask = askCard()
@@ -444,7 +448,7 @@ final class KernlAppsCard: NSView {
             URL(fileURLWithPath: "/Applications/\(name).app"),
             URL(fileURLWithPath: "/Applications/\(display).app"),
             home.appendingPathComponent("Downloads/speakr/build/\(display).app"),
-            home.appendingPathComponent("Downloads/speekr/build/\(display).app"),
+            home.appendingPathComponent("Downloads/speakr/build/\(display).app"),
             home.appendingPathComponent("Downloads/writr/build/Writr.app"),
             home.appendingPathComponent("Downloads/readr/build/Readr.app"),
             home.appendingPathComponent("Downloads/Listener/mac/build/listnr.app")

@@ -11,14 +11,13 @@ final class ListnrHomeWindowController {
             appName: "listnr",
             tagline: "read anything, anywhere",
             mark: .listnr,
-            sections: ["Home", "Kernl", "Settings"],
+            sections: ["Home", "Settings"],
             pageBuilder: { _ in NSView() }
         )
         shell.pageBuilder = { [weak self] index in
             guard let self else { return NSView() }
             switch index {
-            case 1: return KernlPage()
-            case 2: return self.settingsPage()
+            case 1: return self.settingsPage()
             default: return self.homePage()
             }
         }
@@ -26,6 +25,7 @@ final class ListnrHomeWindowController {
     }
 
     func show(section: Int = 0) { shell.show(section: section) }
+    func showSettings() { shell.show(section: 1) }
 
     private func homePage() -> NSView {
         let reads = ReadStore.shared.entries
@@ -40,7 +40,8 @@ final class ListnrHomeWindowController {
             fleetHStack([
                 fleetButton("Read selection  ⌥L", primary: true, target: self, action: #selector(readSelection)),
                 fleetButton("Read clipboard", target: self, action: #selector(readClipboard)),
-                fleetButton("Chrome extension", target: self, action: #selector(openExtension))
+                fleetButton("Chrome extension", target: self, action: #selector(openExtension)),
+                fleetButton("Settings", target: self, action: #selector(openSettings))
             ], spacing: 8)
         ], spacing: 12))
         var recentViews: [NSView] = []
@@ -116,6 +117,7 @@ final class ListnrHomeWindowController {
         f.dateFormat = "d MMM · HH:mm"; return f
     }()
 
+    @objc private func openSettings() { shell.show(section: 1) }
     @objc private func readSelection() { onRead?() }
     @objc private func readClipboard() { onReadClipboard?() }
     @objc private func appearanceTapped(_ sender: NSButton) {

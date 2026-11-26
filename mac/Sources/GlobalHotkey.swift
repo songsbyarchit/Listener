@@ -1,18 +1,86 @@
 import Foundation
+import CoreGraphics
 import Carbon
 
+/// A session-level key tap. Carbon hotkeys are usually enough, but some text
+/// fields consume Option+W/R/L before the hotkey fires. A consuming CGEventTap
+/// makes the shortcut win and stops the accented character being typed.
 final class GlobalHotkey {
-    private var ref: EventHotKeyRef?
-    private var handlerRef: EventHandlerRef?
-    private let callback: () -> Void
     private let keyCode: UInt32
-    private let modifiers: UInt32
-    private let hotKeyID = EventHotKeyID(signature: OSType(0x4C4E5452), id: 1)
+    private let carbonModifiers: UInt32
+    private let callback: () -> Void
+    private var tap: CFMachPort?
+    private var source: CFRunLoopSource?
+    private var carbonRef: EventHotKeyRef?
+    private var carbonHandler: EventHandlerRef?
+    private var enabled = true
 
     init(keyCode: UInt32, modifiers: UInt32, callback: @escaping () -> Void) {
-        self.callback = callback
         self.keyCode = keyCode
-        self.modifiers = modifiers
+        self.carbonModifiers = modifiers
+        self.callback = callback
+        installTap()
+    }
+
+    private func installTap() {
+        let mask = CGEventMask(1 << CGEventType.keyDown.rawValue)
+        let userInfo = Unmanaged.passUnretained(self).toOpaque()
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: { _, type, event, refcon in
+                guard let refcon else { return Unmanaged.passUnretained(event) }
+                let hotkey = Unmanaged<GlobalHotkey>.fromOpaque(refcon).takeUnretainedValue()
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    if let tap = hotkey.tap { CGEvent.tapEnable(tap: tap, enable: true) }
+                    return Unmanaged.passUnretained(event)
+                }
+                guard type == .keyDown else { return Unmanaged.passUnretained(event) }
+                if hotkey.matches(event) {
+                    hotkey.callback()
+                    return nil
+                }
+                return Unmanaged.passUnretained(event)
+            },
+            userInfo: userInfo
+        ) else {
+            installCarbonFallback()
+            return
+        }
+        self.tap = tap
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        self.source = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    private func matches(_ event: CGEvent) -> Bool {
+        guard enabled else { return false }
+        guard event.getIntegerValueField(.keyboardEventKeycode) == Int64(keyCode) else { return false }
+        let flags = event.flags
+        guard flags.contains(.maskAlternate) else { return false }
+        guard !flags.contains(.maskCommand), !flags.contains(.maskControl) else { return false }
+        return true
+    }
+
+    func setEnabled(_ enabled: Bool) {
+        self.enabled = enabled
+        if let tap { CGEvent.tapEnable(tap: tap, enable: enabled) }
+        if let carbonRef {
+            if enabled {
+                // The event tap is the primary path. Carbon is only a fallback.
+            } else {
+                UnregisterEventHotKey(carbonRef)
+                self.carbonRef = nil
+            }
+        } else if enabled && tap == nil {
+            installCarbonFallback()
+        }
+    }
+
+    private func installCarbonFallback() {
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
                                       eventKind: UInt32(kEventHotKeyPressed))
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
@@ -21,22 +89,19 @@ final class GlobalHotkey {
             Unmanaged<GlobalHotkey>.fromOpaque(userData)
                 .takeUnretainedValue().callback()
             return noErr
-        }, 1, &eventType, selfPtr, &handlerRef)
-        setEnabled(true)
-    }
-
-    func setEnabled(_ enabled: Bool) {
-        if enabled, ref == nil {
-            RegisterEventHotKey(keyCode, modifiers, hotKeyID,
-                                GetApplicationEventTarget(), 0, &ref)
-        } else if !enabled, let current = ref {
-            UnregisterEventHotKey(current)
-            ref = nil
-        }
+        }, 1, &eventType, selfPtr, &carbonHandler)
+        let hotKeyID = EventHotKeyID(signature: OSType(0x4B524E4C), id: 1)
+        RegisterEventHotKey(keyCode, carbonModifiers, hotKeyID,
+                            GetApplicationEventTarget(), 0, &carbonRef)
     }
 
     deinit {
-        if let ref { UnregisterEventHotKey(ref) }
-        if let handlerRef { RemoveEventHandler(handlerRef) }
+        if let tap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            CFMachPortInvalidate(tap)
+        }
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
+        if let carbonRef { UnregisterEventHotKey(carbonRef) }
+        if let carbonHandler { RemoveEventHandler(carbonHandler) }
     }
 }
