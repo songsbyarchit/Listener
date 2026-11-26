@@ -154,6 +154,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         speaker.speak(text)
     }
 
+    /// Opening listnr again (from Kernl, Finder or Spotlight) raises its window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openWindow()
+        return true
+    }
+
     @objc private func openWindow() {
         homeWindow.show()
         statusItem.button?.image = NSImage(systemSymbolName: "speaker.wave.2.fill", accessibilityDescription: "listnr")

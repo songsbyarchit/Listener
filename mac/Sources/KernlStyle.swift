@@ -57,6 +57,15 @@ final class KernlHairlineView: NSView {
 
 final class KernlCard: NSView {
     let content: NSView
+    /// Set to make the whole card a button with a hover border and pointer cursor.
+    var onClick: (() -> Void)? {
+        didSet {
+            setAccessibilityRole(onClick == nil ? .group : .button)
+            window?.invalidateCursorRects(for: self)
+            needsDisplay = true
+        }
+    }
+    private var hovering = false { didSet { needsDisplay = true } }
     override var wantsUpdateLayer: Bool { true }
     init(content: NSView, padding: NSEdgeInsets = NSEdgeInsets(top: 18, left: 20, bottom: 18, right: 20)) {
         self.content = content
@@ -77,11 +86,41 @@ final class KernlCard: NSView {
     required init?(coder: NSCoder) { fatalError() }
     override func updateLayer() {
         layer?.backgroundColor = KernlTheme.card.cgColor
-        layer?.borderColor = KernlTheme.line.cgColor
+        layer?.borderColor = (hovering && onClick != nil ? KernlTheme.accent : KernlTheme.line).cgColor
     }
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
+    }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas where area.owner === self { removeTrackingArea(area) }
+        addTrackingArea(NSTrackingArea(rect: .zero,
+                                       options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+    override func resetCursorRects() {
+        if onClick != nil { addCursorRect(bounds, cursor: .pointingHand) }
+    }
+    /// A clickable card owns every point inside it, so text and padding open it too.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard onClick != nil else { return super.hitTest(point) }
+        return frame.contains(point) ? self : nil
+    }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { onClick != nil }
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+    override func mouseDown(with event: NSEvent) {
+        if onClick == nil { super.mouseDown(with: event) }
+    }
+    override func mouseUp(with event: NSEvent) {
+        guard let onClick else { return super.mouseUp(with: event) }
+        if bounds.contains(convert(event.locationInWindow, from: nil)) { onClick() }
+    }
+    override func accessibilityPerformPress() -> Bool {
+        guard let onClick else { return false }
+        onClick()
+        return true
     }
 }
 
@@ -96,14 +135,23 @@ final class KernlStatGrid: NSView {
     private var heightConstraint: NSLayoutConstraint!
     private var columns = 0
     private var rows = 0
+    /// Makes every tile clickable and reports the tapped tile's index.
+    var onSelect: ((Int) -> Void)? {
+        didSet {
+            for (index, card) in cards.enumerated() {
+                card.onClick = onSelect.map { select in { select(index) } }
+            }
+        }
+    }
 
     init(_ items: [(label: String, value: String, foot: String)],
          minTileWidth: CGFloat = 136, tileHeight: CGFloat = 116, spacing: CGFloat = 12) {
         self.spacing = spacing
         self.minTileWidth = minTileWidth
         self.tileHeight = tileHeight
+        // One value size per row, set by the longest value, so the strip reads evenly.
+        let count = items.map { $0.value.count }.max() ?? 0
         self.cards = items.map { item in
-            let count = item.value.count
             let valueSize: CGFloat = count <= 5 ? 29 : (count <= 8 ? 24 : (count <= 10 ? 19 : 17))
             let value = fleetLabel(item.value, size: valueSize, weight: .medium, color: KernlTheme.ink, lines: 1)
             value.cell?.lineBreakMode = .byTruncatingTail
@@ -235,6 +283,7 @@ final class KernlButton: NSButton {
     private let style: Style
     private var hovering = false { didSet { needsDisplay = true } }
     override var wantsUpdateLayer: Bool { true }
+    override var state: NSControl.StateValue { didSet { needsDisplay = true } }
 
     init(_ title: String, style: Style = .secondary, target: AnyObject?, action: Selector?) {
         self.style = style
@@ -276,9 +325,10 @@ final class KernlButton: NSButton {
             layer.backgroundColor = (hovering ? KernlTheme.accent.blended(withFraction: 0.08, of: .black) ?? KernlTheme.accent : KernlTheme.accent).cgColor
             layer.borderWidth = 0
         case .secondary:
-            layer.backgroundColor = hovering ? KernlTheme.soft.cgColor : NSColor.clear.cgColor
+            let selected = state == .on
+            layer.backgroundColor = (hovering || selected) ? KernlTheme.soft.cgColor : NSColor.clear.cgColor
             layer.borderWidth = 1
-            layer.borderColor = KernlTheme.lineStrong.cgColor
+            layer.borderColor = (selected ? KernlTheme.ink : KernlTheme.lineStrong).cgColor
         }
     }
     override func viewDidChangeEffectiveAppearance() {

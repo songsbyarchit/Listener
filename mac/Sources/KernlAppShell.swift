@@ -140,6 +140,8 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         window.titleVisibility = .hidden
         window.minSize = NSSize(width: 860, height: 600)
         window.isReleasedWhenClosed = false
+        // Open on the Space the person is looking at, not the one it was last on.
+        window.collectionBehavior.insert(.moveToActiveSpace)
         window.backgroundColor = KernlTheme.paper
         super.init(window: window)
         window.delegate = self
