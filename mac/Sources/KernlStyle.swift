@@ -1,7 +1,7 @@
 import Foundation
 import AppKit
 
-enum FleetTheme {
+enum KernlTheme {
     private static func dynamic(light: NSColor, dark: NSColor) -> NSColor {
         NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
@@ -21,23 +21,22 @@ enum FleetTheme {
                               dark: NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 0.15))
     static let lineStrong = dynamic(light: NSColor(srgbRed: 0.078, green: 0.078, blue: 0.082, alpha: 0.32),
                                     dark: NSColor(srgbRed: 0.969, green: 0.961, blue: 0.941, alpha: 0.26))
-    static let accent = dynamic(light: NSColor(srgbRed: 0.310, green: 0.561, blue: 0.208, alpha: 1),
-                                dark: NSColor(srgbRed: 0.490, green: 0.733, blue: 0.290, alpha: 1))
-    static let blue = dynamic(light: NSColor(srgbRed: 0.0, green: 0.443, blue: 0.89, alpha: 1),
-                              dark: NSColor(srgbRed: 0.357, green: 0.549, blue: 1.0, alpha: 1))
+    static let accent = dynamic(light: NSColor(srgbRed: 0.067, green: 0.341, blue: 0.298, alpha: 1),
+                                dark: NSColor(srgbRed: 0.067, green: 0.341, blue: 0.298, alpha: 1))
+    static let blue = accent
 }
 
-final class FleetBackdrop: NSView {
+final class KernlBackdrop: NSView {
     override var wantsUpdateLayer: Bool { true }
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
     }
     required init?(coder: NSCoder) { fatalError() }
-    override func updateLayer() { layer?.backgroundColor = FleetTheme.paper.cgColor }
+    override func updateLayer() { layer?.backgroundColor = KernlTheme.paper.cgColor }
 }
 
-final class FleetCard: NSView {
+final class KernlCard: NSView {
     let content: NSView
     override var wantsUpdateLayer: Bool { true }
     init(content: NSView, padding: NSEdgeInsets = NSEdgeInsets(top: 18, left: 20, bottom: 18, right: 20)) {
@@ -58,15 +57,15 @@ final class FleetCard: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
     override func updateLayer() {
-        layer?.backgroundColor = FleetTheme.card.cgColor
-        layer?.borderColor = FleetTheme.line.cgColor
+        layer?.backgroundColor = KernlTheme.card.cgColor
+        layer?.borderColor = KernlTheme.line.cgColor
     }
 }
 
 func fleetLabel(_ text: String,
                 size: CGFloat = 13,
                 weight: Type.Weight = .regular,
-                color: NSColor = FleetTheme.ink,
+                color: NSColor = KernlTheme.ink,
                 lines: Int = 0) -> NSTextField {
     let field = NSTextField(wrappingLabelWithString: text)
     field.font = Type.sans(size, weight)
@@ -85,7 +84,7 @@ func fleetLabel(_ text: String,
 func fleetTitle(_ text: String) -> NSTextField {
     let field = NSTextField(wrappingLabelWithString: text)
     field.font = Type.sans(32, .medium)
-    field.textColor = FleetTheme.ink
+    field.textColor = KernlTheme.ink
     field.maximumNumberOfLines = 1
     field.isSelectable = false
     field.drawsBackground = false
@@ -103,7 +102,7 @@ func fleetEyebrow(_ text: String) -> NSTextField {
         string: text.uppercased(),
         attributes: [
             .font: Type.sans(11, .medium),
-            .foregroundColor: FleetTheme.muted,
+            .foregroundColor: KernlTheme.muted,
             .kern: 1.0,
             .paragraphStyle: style
         ]
@@ -143,7 +142,7 @@ func fleetVStack(_ views: [NSView], spacing: CGFloat = 10,
     return stack
 }
 
-final class FleetButton: NSButton {
+final class KernlButton: NSButton {
     enum Style { case primary, secondary }
     private let style: Style
     private var hovering = false { didSet { needsDisplay = true } }
@@ -162,7 +161,7 @@ final class FleetButton: NSButton {
             string: title,
             attributes: [
                 .font: Type.sans(14, .medium),
-                .foregroundColor: style == .primary ? FleetTheme.paper : FleetTheme.ink
+                .foregroundColor: style == .primary ? KernlTheme.paper : KernlTheme.ink
             ]
         )
         let width = ceil((title as NSString).size(withAttributes: [.font: Type.sans(14, .medium)]).width) + 36
@@ -186,19 +185,19 @@ final class FleetButton: NSButton {
         guard let layer else { return }
         switch style {
         case .primary:
-            layer.backgroundColor = (hovering ? FleetTheme.accent.blended(withFraction: 0.08, of: .black) ?? FleetTheme.accent : FleetTheme.accent).cgColor
+            layer.backgroundColor = (hovering ? KernlTheme.accent.blended(withFraction: 0.08, of: .black) ?? KernlTheme.accent : KernlTheme.accent).cgColor
             layer.borderWidth = 0
         case .secondary:
-            layer.backgroundColor = hovering ? FleetTheme.soft.cgColor : NSColor.clear.cgColor
+            layer.backgroundColor = hovering ? KernlTheme.soft.cgColor : NSColor.clear.cgColor
             layer.borderWidth = 1
-            layer.borderColor = FleetTheme.lineStrong.cgColor
+            layer.borderColor = KernlTheme.lineStrong.cgColor
         }
     }
 }
 
 func fleetButton(_ title: String, primary: Bool = false,
                  target: AnyObject?, action: Selector) -> NSButton {
-    FleetButton(title, style: primary ? .primary : .secondary, target: target, action: action)
+    KernlButton(title, style: primary ? .primary : .secondary, target: target, action: action)
 }
 
 func fleetSwitch(isOn: Bool, target: AnyObject?, action: Selector) -> NSSwitch {
@@ -222,7 +221,7 @@ func fleetTextScroll(editable: Bool) -> (NSScrollView, NSTextView) {
     text.isSelectable = true
     text.drawsBackground = false
     text.font = Type.sans(15)
-    text.textColor = FleetTheme.ink
+    text.textColor = KernlTheme.ink
     text.textContainerInset = NSSize(width: 2, height: 8)
     text.isRichText = false
     text.autoresizingMask = [.width]
@@ -249,7 +248,7 @@ func fleetSpacer() -> NSView {
 }
 
 
-final class LoomPanelCard: NSView {
+final class KernlPanelCard: NSView {
     override var wantsUpdateLayer: Bool { true }
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -259,12 +258,12 @@ final class LoomPanelCard: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
     override func updateLayer() {
-        layer?.backgroundColor = FleetTheme.card.cgColor
-        layer?.borderColor = FleetTheme.line.cgColor
+        layer?.backgroundColor = KernlTheme.card.cgColor
+        layer?.borderColor = KernlTheme.line.cgColor
     }
 }
 
-final class LoomBubbleView: NSView {
+final class KernlBubbleView: NSView {
     let label: NSTextField
     override var wantsUpdateLayer: Bool { true }
     init(label: NSTextField) {
@@ -284,6 +283,6 @@ final class LoomBubbleView: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
     override func updateLayer() {
-        layer?.backgroundColor = FleetTheme.soft.cgColor
+        layer?.backgroundColor = KernlTheme.soft.cgColor
     }
 }

@@ -23,14 +23,14 @@ final class PlayerHUD: NSPanel {
         isOpaque = false
         hasShadow = true
 
-        let card = LoomPanelCard()
+        let card = KernlPanelCard()
         card.translatesAutoresizingMaskIntoConstraints = false
         contentView = card
 
-        let mark = LoomMarkView(kind: .listnr, size: 30)
+        let mark = KernlMarkView(kind: .listnr, size: 30)
         let name = NSTextField(labelWithString: "listnr")
         name.font = Type.sans(14, .semibold)
-        name.textColor = FleetTheme.ink
+        name.textColor = KernlTheme.ink
         name.translatesAutoresizingMaskIntoConstraints = false
         let brand = NSStackView(views: [mark, name])
         brand.orientation = .horizontal
@@ -39,7 +39,7 @@ final class PlayerHUD: NSPanel {
         brand.translatesAutoresizingMaskIntoConstraints = false
 
         status.font = Type.sans(11, .medium)
-        status.textColor = FleetTheme.muted
+        status.textColor = KernlTheme.muted
         status.translatesAutoresizingMaskIntoConstraints = false
         let header = NSStackView(views: [brand, fleetSpacer(), status])
         header.orientation = .horizontal
@@ -48,7 +48,7 @@ final class PlayerHUD: NSPanel {
         header.translatesAutoresizingMaskIntoConstraints = false
 
         snippet.font = Type.sans(13)
-        snippet.textColor = FleetTheme.ink
+        snippet.textColor = KernlTheme.ink
         snippet.maximumNumberOfLines = 2
         snippet.lineBreakMode = .byTruncatingTail
         snippet.translatesAutoresizingMaskIntoConstraints = false
@@ -56,18 +56,18 @@ final class PlayerHUD: NSPanel {
         pauseButton.title = "Pause"
         pauseButton.isBordered = false
         pauseButton.font = Type.sans(12, .medium)
-        pauseButton.contentTintColor = FleetTheme.ink
+        pauseButton.contentTintColor = KernlTheme.ink
         pauseButton.target = self
         pauseButton.action = #selector(pauseTapped)
         pauseButton.translatesAutoresizingMaskIntoConstraints = false
         pauseButton.wantsLayer = true
-        pauseButton.layer?.backgroundColor = FleetTheme.soft.cgColor
+        pauseButton.layer?.backgroundColor = KernlTheme.soft.cgColor
         pauseButton.layer?.cornerRadius = 8
 
         stopButton.title = "Stop"
         stopButton.isBordered = false
         stopButton.font = Type.sans(12, .medium)
-        stopButton.contentTintColor = FleetTheme.muted
+        stopButton.contentTintColor = KernlTheme.muted
         stopButton.target = self
         stopButton.action = #selector(stopTapped)
         stopButton.translatesAutoresizingMaskIntoConstraints = false
@@ -101,9 +101,9 @@ final class PlayerHUD: NSPanel {
         hideWork?.cancel()
         snippet.stringValue = text
         status.stringValue = textStatus
-        pauseButton.layer?.backgroundColor = FleetTheme.soft.cgColor
-        pauseButton.contentTintColor = FleetTheme.ink
-        stopButton.contentTintColor = FleetTheme.muted
+        pauseButton.layer?.backgroundColor = KernlTheme.soft.cgColor
+        pauseButton.contentTintColor = KernlTheme.ink
+        stopButton.contentTintColor = KernlTheme.muted
         position()
         orderFrontRegardless()
     }

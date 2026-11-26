@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkey: GlobalHotkey?
     private var speaker: Speaker!
     private var hud: PlayerHUD!
+    private var homeWindow: ListnrHomeWindowController!
     private var lastText = ""
     private var appearanceItems: [NSMenuItem] = []
     private var pauseItem: NSMenuItem!
@@ -22,6 +23,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         speaker = Speaker()
+        homeWindow = ListnrHomeWindowController()
+        homeWindow.onRead = { [weak self] in self?.readSelection() }
+        homeWindow.onReadClipboard = { [weak self] in self?.readClipboard() }
+        homeWindow.onClose = { [weak self] in
+            NSApp.setActivationPolicy(.accessory)
+            self?.statusItem.button?.image = NSImage(systemSymbolName: "speaker.wave.2", accessibilityDescription: "listnr")
+            self?.statusItem.button?.image?.isTemplate = true
+        }
         hud = PlayerHUD()
         hud.onPause = { [weak self] in self?.speaker.togglePause() }
         hud.onStop = { [weak self] in self?.speaker.stop() }
@@ -44,6 +53,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         buildStatusItem()
         applyStoredAppearance()
+        KernlAppearance.observe { [weak self] in
+            self?.applyStoredAppearance()
+        }
         NSApp.setActivationPolicy(.accessory)
     }
 
@@ -54,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.toolTip = "listnr — read selected text"
 
         let menu = NSMenu()
+        menu.addItem(item("Open listnr", #selector(openWindow)))
         menu.addItem(item("Read selection  ⌥L", #selector(readSelection)))
         menu.addItem(item("Read clipboard", #selector(readClipboard)))
         pauseItem = item("Pause", #selector(togglePause))
@@ -73,10 +86,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appearance.submenu = appearanceMenu
         menu.addItem(appearance)
 
-        let loom = NSMenu(title: "Loom")
-        loom.addItem(item("Open Loom folder", #selector(openLoomFolder)))
+        let loom = NSMenu(title: "Kernl")
+        loom.addItem(item("Open Kernl folder", #selector(openKernlFolder)))
         loom.addItem(item("Open Chrome extension folder", #selector(openExtensionFolder)))
-        let loomItem = NSMenuItem(title: "Loom", action: nil, keyEquivalent: "")
+        let loomItem = NSMenuItem(title: "Kernl", action: nil, keyEquivalent: "")
         loomItem.submenu = loom
         menu.addItem(loomItem)
         menu.addItem(.separator())
@@ -116,29 +129,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hud.showError("The clipboard is empty.")
             return
         }
-        speak(text)
+        speak(text, source: "clipboard")
     }
 
-    private func speak(_ text: String) {
+    private func speak(_ text: String, source: String = "selection") {
         lastText = text
+        ReadStore.shared.add(text: text, source: source)
         hud.show(text: text, status: "reading")
         speaker.speak(text)
+    }
+
+    @objc private func openWindow() {
+        homeWindow.show()
+        statusItem.button?.image = NSImage(systemSymbolName: "speaker.wave.2.fill", accessibilityDescription: "listnr")
+        statusItem.button?.image?.isTemplate = true
     }
 
     @objc private func togglePause() { speaker.togglePause() }
     @objc private func stop() { speaker.stop() }
 
     private func applyStoredAppearance() {
-        let stored = UserDefaults.standard.string(forKey: "loom.appearance") ?? "system"
-        applyAppearance(stored)
-    }
-
-    private func applyAppearance(_ value: String) {
-        switch value {
-        case "light": NSApp.appearance = NSAppearance(named: .aqua)
-        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
-        default: NSApp.appearance = nil
-        }
+        let value = KernlAppearance.value()
+        KernlAppearance.apply(value)
         for (index, item) in appearanceItems.enumerated() {
             item.state = ["system", "light", "dark"][index] == value ? .on : .off
         }
@@ -146,11 +158,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func setAppearance(_ sender: NSMenuItem) {
         let value = ["system", "light", "dark"][max(0, min(sender.tag, 2))]
-        UserDefaults.standard.set(value, forKey: "loom.appearance")
-        applyAppearance(value)
+        KernlAppearance.set(value)
+        applyStoredAppearance()
     }
 
-    @objc private func openLoomFolder() {
+    @objc private func openKernlFolder() {
         NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".fleet", isDirectory: true))
     }

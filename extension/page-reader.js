@@ -9,14 +9,15 @@
   if (sessionStorage.getItem('listnr:page-pill-hidden') === '1') return;
 
   const textLength = (document.body?.innerText || '').trim().length;
-  if (textLength < 350) return;
+  if (textLength < 200) return;
 
   const DEFAULTS = {
     voice: 'af_heart',
     rate: 1,
     volume: 1,
     sentenceGap: 160,
-    paragraphGap: 600
+    paragraphGap: 600,
+    showPill: true
   };
 
   const FALLBACK_VOICES = [
@@ -81,10 +82,10 @@
   --lnr-line: rgba(247, 245, 240, .13);
   --lnr-line-soft: rgba(247, 245, 240, .08);
   --lnr-hover: rgba(255, 255, 255, .08);
-  --lnr-accent: #5F9E35;
-  --lnr-accent-bright: #8BC34A;
-  --lnr-on-accent: #141415;
-  --lnr-accent-soft: rgba(95, 158, 53, .18);
+  --lnr-accent: #11574C;
+  --lnr-accent-bright: #11574C;
+  --lnr-on-accent: #FBE9CE;
+  --lnr-accent-soft: rgba(17, 87, 76, .30);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -98,8 +99,8 @@
     --lnr-line: rgba(20, 20, 21, .14);
     --lnr-line-soft: rgba(20, 20, 21, .08);
     --lnr-hover: rgba(20, 20, 21, .06);
-    --lnr-accent: #4F8F35;
-    --lnr-accent-soft: rgba(79, 143, 53, .14);
+    --lnr-accent: #11574C;
+    --lnr-accent-soft: rgba(17, 87, 76, .22);
     color-scheme: light;
   }
 }
@@ -114,8 +115,8 @@
   --lnr-line: rgba(20, 20, 21, .14);
   --lnr-line-soft: rgba(20, 20, 21, .08);
   --lnr-hover: rgba(20, 20, 21, .06);
-  --lnr-accent: #4F8F35;
-  --lnr-accent-soft: rgba(79, 143, 53, .14);
+  --lnr-accent: #11574C;
+  --lnr-accent-soft: rgba(17, 87, 76, .22);
   color-scheme: light;
 }
 :host([data-theme="dark"]) {
@@ -128,7 +129,7 @@
   --lnr-line: rgba(247, 245, 240, .13);
   --lnr-line-soft: rgba(247, 245, 240, .08);
   --lnr-hover: rgba(255, 255, 255, .08);
-  --lnr-accent-soft: rgba(221, 85, 47, .15);
+  --lnr-accent-soft: rgba(17, 87, 76, .28);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -319,7 +320,7 @@
   box-shadow: 0 5px 18px rgba(200,70,35,.32);
   transition: transform .15s, background .15s;
 }
-.lnr-play:hover { transform: scale(1.045); background: #D9482A; }
+.lnr-play:hover { transform: scale(1.045); background: #0B3F38; }
 .lnr-play svg { width: 19px; height: 19px; }
 .lnr-speed {
   height: 30px;
@@ -417,7 +418,7 @@
   color: var(--lnr-muted) !important;
   cursor: pointer;
 }
-.lnr-follow input { accent-color: #F25533; }
+.lnr-follow input { accent-color: var(--lnr-accent); }
 .lnr-hint { margin: 9px 0 0; color: var(--lnr-faint); font: 500 12px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* Pin-position picker */
@@ -471,7 +472,7 @@
   padding: 8px 10px;
   border-radius: 7px;
   background: var(--lnr-accent-soft);
-  color: #F25533;
+  color: var(--lnr-accent);
   font: 500 12px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .lnr-panel-toast[hidden] { display: none; }
@@ -557,6 +558,7 @@
     loadDock();
     loadPrefs();
     loadTheme();
+    setInterval(loadTheme, 15000);
   }
 
   function loadTheme() {
@@ -564,6 +566,11 @@
       chrome.storage.local.get(THEME_KEY).then((stored) => {
         applyTheme(stored?.[THEME_KEY] || 'system');
       }).catch(() => {});
+      chrome.runtime.sendMessage({ type: 'listnr:get-fleet-appearance' })
+        .then((result) => {
+          if (result?.ok && result.appearance) applyTheme(result.appearance);
+        })
+        .catch(() => {});
     } catch {
       // Restricted pages keep the system theme.
     }
@@ -622,6 +629,9 @@
     if (state.audio) {
       state.audio.playbackRate = next.rate;
       state.audio.volume = next.volume;
+    }
+    if (refs.pill) {
+      refs.pill.hidden = !next.showPill || state.panelOpen;
     }
     if (refs.speed) {
       fillVoiceSelect();
@@ -1282,14 +1292,7 @@
         <section class="lnr-panel" aria-label="listnr in-page player" hidden>
           <header class="lnr-head">
             <div class="lnr-brand">
-              <svg class="lnr-mark" viewBox="0 0 32 32" aria-hidden="true">
-                <rect x="1" y="1" width="30" height="30" rx="8" fill="#07362C" stroke="rgba(247,245,240,.16)" />
-                <path d="M8.2 18.6v-2.4a7.8 7.8 0 0 1 15.6 0v2.4" fill="none" stroke="#FBE9CE" stroke-width="2" stroke-linecap="round" />
-                <rect x="6.4" y="16.6" width="4.9" height="7.2" rx="2.45" fill="#FBE9CE" />
-                <rect x="20.7" y="16.6" width="4.9" height="7.2" rx="2.45" fill="#FBE9CE" />
-                <rect x="8.1" y="18.7" width="1.6" height="3" rx=".8" fill="#07362C" />
-                <rect x="22.3" y="18.7" width="1.6" height="3" rx=".8" fill="#07362C" />
-              </svg>
+              <img class="lnr-mark" src="${chrome.runtime.getURL('icons/logo.png')}" alt="" />
               <span>listnr</span>
             </div>
             <div class="lnr-head-actions">
@@ -2059,7 +2062,7 @@
       sheet.replaceSync(
         '::highlight(' +
           HIGHLIGHT_NAME +
-          '){background-color:rgba(139,195,74,.26);color:#141415;border-radius:2px;}'
+          '){background-color:rgba(17,87,76,.35);color:#FBE9CE;border-radius:2px;}'
       );
       document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
       state.highlightSheet = sheet;

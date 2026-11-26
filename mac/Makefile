@@ -10,11 +10,12 @@ FRAMEWORKS  := -framework AppKit -framework ApplicationServices -framework AVFou
 .PHONY: build run install clean
 all: build
 build: $(BIN)
-$(BIN): $(SOURCES) Info.plist Resources/AppIcon.icns $(FONT_FILES)
+$(BIN): $(SOURCES) Info.plist Resources/AppIcon.icns Resources/Mark.png $(FONT_FILES)
 	@mkdir -p "$(APP)/Contents/MacOS" "$(APP)/Contents/Resources"
 	swiftc $(SWIFT_FLAGS) -o "$(BIN)" $(SOURCES) $(FRAMEWORKS)
 	cp Info.plist "$(APP)/Contents/Info.plist"
 	cp Resources/AppIcon.icns "$(APP)/Contents/Resources/AppIcon.icns"
+	cp Resources/Mark.png "$(APP)/Contents/Resources/Mark.png"
 	rm -rf "$(APP)/Contents/Resources/Fonts"
 	cp -R Resources/Fonts "$(APP)/Contents/Resources/Fonts"
 	BUNDLE_ID="$(BUNDLE_ID)" bash scripts/sign.sh "$(APP)"

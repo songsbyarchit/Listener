@@ -9,7 +9,8 @@ const DEFAULTS = Object.freeze({
   volume: 1,
   sentenceGap: 160,
   paragraphGap: 600,
-  follow: true
+  follow: true,
+  showPill: true
 });
 
 const FALLBACK_VOICES = [
@@ -41,6 +42,7 @@ const els = {
   paragraphGap: document.getElementById('paragraph-gap'),
   paragraphGapValue: document.getElementById('paragraph-gap-value'),
   follow: document.getElementById('follow'),
+  showPill: document.getElementById('show-pill'),
   theme: document.getElementById('theme'),
   reset: document.getElementById('reset')
 };
@@ -55,7 +57,10 @@ init();
 async function init() {
   prefs = normalizePrefs(await readStoredPrefs());
   try {
-    theme = (await chrome.storage.local.get('listnr:theme'))['listnr:theme'] || 'system';
+    const stored = (await chrome.storage.local.get('listnr:theme'))['listnr:theme'];
+    theme = stored || 'system';
+    const remote = await chrome.runtime.sendMessage({ type: 'listnr:get-fleet-appearance' });
+    if (remote?.ok && remote.appearance) theme = remote.appearance;
   } catch {
     theme = 'system';
   }
@@ -75,7 +80,8 @@ function normalizePrefs(value) {
     volume: clampNumber(source.volume, 0, 1, DEFAULTS.volume),
     sentenceGap: Math.round(clampNumber(source.sentenceGap, 0, 600, DEFAULTS.sentenceGap)),
     paragraphGap: Math.round(clampNumber(source.paragraphGap, 0, 1500, DEFAULTS.paragraphGap)),
-    follow: source.follow !== false
+    follow: source.follow !== false,
+    showPill: source.showPill !== false
   };
 }
 
@@ -108,6 +114,7 @@ function render() {
   els.paragraphGap.value = String(prefs.paragraphGap);
   els.paragraphGapValue.textContent = `${prefs.paragraphGap} ms`;
   els.follow.checked = prefs.follow;
+  els.showPill.checked = prefs.showPill;
   els.theme.value = theme;
   if (els.voice.options.length) els.voice.value = prefs.voice;
 }
@@ -149,10 +156,20 @@ function bind() {
     savePrefs();
   });
 
+  els.showPill.addEventListener('change', () => {
+    prefs.showPill = els.showPill.checked;
+    savePrefs();
+  });
+
   els.theme.addEventListener('change', async () => {
     theme = els.theme.value;
     applyTheme(theme);
     await chrome.storage.local.set({ 'listnr:theme': theme });
+    try {
+      await chrome.runtime.sendMessage({ type: 'listnr:set-fleet-appearance', appearance: theme });
+    } catch {
+      // The local server may be offline; the stored theme still applies.
+    }
   });
 
   els.reset.addEventListener('click', () => {

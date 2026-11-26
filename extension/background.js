@@ -125,6 +125,32 @@ async function fetchVoiceList() {
   }
 }
 
+async function fetchFleetAppearance() {
+  try {
+    const response = await fetch(`${SERVER_URL}/api/fleet/appearance`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    const payload = await response.json().catch(() => null);
+    return { ok: response.ok, appearance: payload?.appearance || 'system' };
+  } catch {
+    return { ok: false, appearance: 'system' };
+  }
+}
+
+async function saveFleetAppearance(value) {
+  try {
+    const response = await fetch(`${SERVER_URL}/api/fleet/appearance`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appearance: value }),
+      signal: AbortSignal.timeout(5000)
+    });
+    return { ok: response.ok };
+  } catch {
+    return { ok: false };
+  }
+}
+
 async function savePageState(message) {
   const docId = String(message.docId || '');
   if (!/^[a-f0-9-]{8,}$/i.test(docId)) return { ok: false, error: 'Invalid document.' };
@@ -195,6 +221,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((error) =>
         sendResponse({ ok: false, error: String(error?.message || error) })
       );
+    return true;
+  }
+
+  if (message.type === 'listnr:get-fleet-appearance') {
+    fetchFleetAppearance().then(sendResponse).catch(() => sendResponse({ ok: false, appearance: 'system' }));
+    return true;
+  }
+
+  if (message.type === 'listnr:set-fleet-appearance') {
+    saveFleetAppearance(String(message.appearance || 'system'))
+      .then(sendResponse)
+      .catch(() => sendResponse({ ok: false }));
     return true;
   }
 
