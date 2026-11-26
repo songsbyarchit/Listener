@@ -628,3 +628,113 @@ final class KernlCountdown: NSView {
         tick()
     }
 }
+
+/// Remembers the prompts typed into a quick window, most recent first, with
+/// how often each is used. Stored as JSON in the app's own folder.
+final class KernlPromptHistory {
+    struct Entry: Codable { var text: String; var count: Int; var last: Date }
+    private let url: URL
+    private(set) var entries: [Entry] = []
+
+    init(url: URL) {
+        self.url = url
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        if let data = try? Data(contentsOf: url), let saved = try? decoder.decode([Entry].self, from: data) {
+            entries = saved
+        }
+    }
+
+    func record(_ raw: String) {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        if let index = entries.firstIndex(where: { $0.text.caseInsensitiveCompare(text) == .orderedSame }) {
+            var entry = entries.remove(at: index)
+            entry.count += 1
+            entry.last = Date()
+            entry.text = text
+            entries.insert(entry, at: 0)
+        } else {
+            entries.insert(Entry(text: text, count: 1, last: Date()), at: 0)
+        }
+        if entries.count > 200 { entries.removeLast(entries.count - 200) }
+        save()
+    }
+
+    /// The most recent earlier prompt that starts with what has been typed.
+    func completion(for typed: String) -> String? {
+        let prefix = typed.lowercased()
+        guard !prefix.isEmpty else { return nil }
+        return entries.first { $0.text.lowercased().hasPrefix(prefix) && $0.text.count > typed.count }?.text
+    }
+
+    /// The custom prompt used most, once it has been used at least `minimum` times.
+    func favourite(minimum: Int = 3, excluding: Set<String> = []) -> String? {
+        entries.filter { $0.count >= minimum && !excluding.contains($0.text.lowercased()) }
+            .max { $0.count == $1.count ? $0.last < $1.last : $0.count < $1.count }?.text
+    }
+
+    private func save() {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted]
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if let data = try? encoder.encode(entries) { try? data.write(to: url, options: .atomic) }
+    }
+}
+
+/// A one-line prompt box with inline history. As you type, the rest of an
+/// earlier prompt appears selected; the right arrow keeps it, typing replaces
+/// it. Return sends, Escape clears. There is no dropdown.
+final class KernlPromptField: NSTextField, NSTextFieldDelegate {
+    var history: KernlPromptHistory?
+    var onSubmit: ((String) -> Void)?
+    private var lastTypedLength = 0
+
+    init(placeholder: String) {
+        super.init(frame: .zero)
+        placeholderString = placeholder
+        font = Type.sans(13)
+        isBezeled = true
+        bezelStyle = .roundedBezel
+        focusRingType = .default
+        translatesAutoresizingMaskIntoConstraints = false
+        delegate = self
+        heightAnchor.constraint(greaterThanOrEqualToConstant: 30).isActive = true
+        setAccessibilityLabel(placeholder)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func controlTextDidChange(_ notification: Notification) {
+        guard let editor = currentEditor() else { return }
+        let typed = stringValue
+        let selection = editor.selectedRange
+        // Only complete while typing forwards at the end, never on delete.
+        defer { lastTypedLength = typed.count }
+        guard typed.count > lastTypedLength, selection.location == (typed as NSString).length,
+              let full = history?.completion(for: typed) else { return }
+        let typedLength = (typed as NSString).length
+        stringValue = typed + String(full.dropFirst(typed.count))
+        editor.selectedRange = NSRange(location: typedLength, length: (stringValue as NSString).length - typedLength)
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+        switch selector {
+        case #selector(NSResponder.insertNewline(_:)):
+            let text = stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return true }
+            history?.record(text)
+            onSubmit?(text)
+            stringValue = ""
+            lastTypedLength = 0
+            return true
+        case #selector(NSResponder.cancelOperation(_:)):
+            stringValue = ""
+            lastTypedLength = 0
+            return true
+        default:
+            return false
+        }
+    }
+}
