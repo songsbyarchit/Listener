@@ -799,6 +799,8 @@ final class KernlIdleDismiss {
     private var warnWork: DispatchWorkItem?
     private var closeWork: DispatchWorkItem?
     private var monitor: Any?
+    private var hoverTimer: Timer?
+    private var hovering = false
     private lazy var pill: KernlRestorePill = {
         let pill = KernlRestorePill(title: "Undo")
         pill.onRestore = { [weak self] in
@@ -828,11 +830,16 @@ final class KernlIdleDismiss {
 
     private(set) var isArmed = false
 
-    /// Starts, or restarts, the wait.
+    /// Starts, or restarts, the wait. Hovering over the popup counts as using
+    /// it: the wait stops while the pointer is inside and starts again, from
+    /// the top, when it leaves.
     func arm() {
         cancel()
         guard enabled, let window, window.isVisible else { return }
         isArmed = true
+        watchHover()
+        hovering = window.frame.contains(NSEvent.mouseLocation)
+        if hovering { return }
         let warn = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.countdown.start(seconds: self.countdownSeconds)
@@ -844,8 +851,35 @@ final class KernlIdleDismiss {
         DispatchQueue.main.asyncAfter(deadline: .now() + idleSeconds, execute: close)
     }
 
+    private func watchHover() {
+        guard hoverTimer == nil else { return }
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            guard let self, let window = self.window else { return }
+            guard self.isArmed, window.isVisible else { self.stopWatchingHover(); return }
+            let inside = window.frame.contains(NSEvent.mouseLocation)
+            if inside == self.hovering { return }
+            self.hovering = inside
+            if inside { self.pause() } else { self.arm() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        hoverTimer = timer
+    }
+
+    private func stopWatchingHover() {
+        hoverTimer?.invalidate()
+        hoverTimer = nil
+    }
+
+    /// Holds the wait while the pointer is over the popup.
+    private func pause() {
+        warnWork?.cancel()
+        closeWork?.cancel()
+        countdown.cancel()
+    }
+
     /// Stops the wait, for example while the popup is busy.
     func cancel() {
+        stopWatchingHover()
         isArmed = false
         warnWork?.cancel()
         closeWork?.cancel()
