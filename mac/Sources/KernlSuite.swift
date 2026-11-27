@@ -434,7 +434,7 @@ enum KernlSuitePages {
         let body = fleetVStack([text, metaLabel], spacing: 5)
         body.setContentHuggingPriority(.defaultLow, for: .horizontal)
         let row = fleetHStack(lead + [time, body], spacing: 14, alignment: .top)
-        return row
+        return KernlHoverRow.wrap(row, copying: item.text)
     }
 
     // MARK: Profile
@@ -1145,5 +1145,90 @@ final class KernlFeedbackField: NSView, NSTextFieldDelegate {
         status.isHidden = false
         status.stringValue = "Thanks. Learning from it…"
         onSubmit?(text)
+    }
+}
+
+
+/// A copy button that shows only while the pointer is over its row, so lists
+/// read as plain text. Shows a tick for a moment once copied.
+final class KernlHoverRow: NSView {
+    private weak var copy: KernlCopyButton?
+    init(row: NSView, copy: KernlCopyButton) {
+        self.copy = copy
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        row.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(row)
+        NSLayoutConstraint.activate([
+            row.leadingAnchor.constraint(equalTo: leadingAnchor), row.trailingAnchor.constraint(equalTo: trailingAnchor),
+            row.topAnchor.constraint(equalTo: topAnchor), row.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+        copy.alphaValue = 0
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+    override func mouseEntered(with event: NSEvent) { fade(to: 1) }
+    override func mouseExited(with event: NSEvent) { if copy?.justCopied != true { fade(to: 0) } }
+    private func fade(to value: CGFloat) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.12
+            copy?.animator().alphaValue = value
+        }
+    }
+
+    /// Wraps `content` with a copy button for `text` on its trailing edge.
+    static func wrap(_ content: NSView, copying text: String) -> NSView {
+        let copy = KernlCopyButton(text: text)
+        content.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        return KernlHoverRow(row: fleetHStack([content, copy], spacing: 8, alignment: .top), copy: copy)
+    }
+}
+
+final class KernlCopyButton: NSButton {
+    private(set) var justCopied = false
+    private let text: String
+    private var resetWork: DispatchWorkItem?
+
+    init(text: String) {
+        self.text = text
+        super.init(frame: .zero)
+        bezelStyle = .regularSquare
+        isBordered = false
+        imagePosition = .imageOnly
+        symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
+        setAccessibilityLabel("Copy")
+        translatesAutoresizingMaskIntoConstraints = false
+        widthAnchor.constraint(equalToConstant: 26).isActive = true
+        heightAnchor.constraint(equalToConstant: 22).isActive = true
+        setContentHuggingPriority(.required, for: .horizontal)
+        setContentCompressionResistancePriority(.required, for: .horizontal)
+        target = self
+        action = #selector(copyText)
+        showIcon(copied: false)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+
+    private func showIcon(copied: Bool) {
+        justCopied = copied
+        image = NSImage(systemSymbolName: copied ? "checkmark" : "square.on.square",
+                        accessibilityDescription: copied ? "Copied" : "Copy")
+        contentTintColor = copied ? KernlTheme.ink : KernlTheme.muted
+        toolTip = copied ? "Copied" : "Copy"
+    }
+
+    @objc private func copyText() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        showIcon(copied: true)
+        resetWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.showIcon(copied: false) }
+        resetWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4, execute: work)
     }
 }
