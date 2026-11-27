@@ -129,6 +129,52 @@ enum KernlSuiteData {
     }
 }
 
+// MARK: Edits
+
+enum KernlEdits {
+    /// Share of characters you changed after speakr or writr wrote them.
+    static func rates(_ range: KernlRange) -> [(String, Int, Int)] {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let iso = ISO8601DateFormatter()
+        func load(_ path: String) -> [[String: Any]] {
+            guard let data = try? Data(contentsOf: home.appendingPathComponent(path)),
+                  let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [] }
+            return list
+        }
+        var speakrChanged = 0, speakrTotal = 0
+        for row in load(".speakr/usage.json") where (row["editObserved"] as? Bool) == true {
+            guard let when = (row["timestamp"] as? String).flatMap(iso.date(from:)), range.includes(when) else { continue }
+            let inserted = row["insertedCharacters"] as? Int ?? 0
+            let edited = (row["editedTranscript"] as? String)?.count ?? 0
+            guard inserted > 0, edited <= max(40, inserted * 2) else { continue }
+            speakrChanged += min(row["changedCharacters"] as? Int ?? 0, inserted)
+            speakrTotal += inserted
+        }
+        var writrChanged = 0, writrTotal = 0
+        for row in load(".writr/drafts.json") {
+            guard let changed = row["changedCharacters"] as? Int,
+                  let when = (row["date"] as? String).flatMap(iso.date(from:)), range.includes(when) else { continue }
+            writrChanged += changed
+            writrTotal += (row["text"] as? String)?.count ?? 0
+        }
+        return [("speakr", speakrChanged, speakrTotal), ("writr", writrChanged, writrTotal)]
+    }
+
+    static func card(_ range: KernlRange) -> [NSView] {
+        let rows = rates(range).map { entry -> NSView in
+            let percent = entry.2 > 0 ? Int((Double(entry.1) / Double(entry.2) * 100).rounded()) : 0
+            let value = entry.2 > 0 ? "\(percent)%" : "not measured"
+            return KernlBarRow(label: "\(entry.0) edited", value: value,
+                               fraction: entry.2 > 0 ? Double(percent) / 100 : 0, tint: KernlTheme.ink)
+        }
+        return [KernlCard(content: fleetVStack([
+            fleetLabel("How much you edit", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1),
+            fleetLabel("Characters you changed after the app wrote them. Lower means it got it right.",
+                       size: 12, color: KernlTheme.muted, lines: 0)
+        ] + rows, spacing: 10))]
+    }
+}
+
 // MARK: Time ranges
 
 enum KernlRange: Int, CaseIterable {
