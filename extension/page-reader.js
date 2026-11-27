@@ -73,9 +73,9 @@
 
 :host {
   all: initial;
-  --lnr-bg: #0B0B0C;
-  --lnr-tile: #1D1D1F;
-  --lnr-raised: #141415;
+  --lnr-bg: #1C1C1E;
+  --lnr-tile: #232326;
+  --lnr-raised: #18181A;
   --lnr-ink: #F7F5F0;
   --lnr-muted: #A8A39A;
   --lnr-faint: #8A857C;
@@ -124,9 +124,9 @@
   color-scheme: light;
 }
 :host([data-theme="dark"]) {
-  --lnr-bg: #0B0B0C;
-  --lnr-tile: #1D1D1F;
-  --lnr-raised: #141415;
+  --lnr-bg: #1C1C1E;
+  --lnr-tile: #232326;
+  --lnr-raised: #18181A;
   --lnr-ink: #F7F5F0;
   --lnr-muted: #A8A39A;
   --lnr-faint: #8A857C;
@@ -193,7 +193,7 @@
 .lnr-wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 13px; }
 .lnr-wave i {
   display: block; width: 2px; height: 13px;
-  border-radius: 1px; background: var(--lnr-accent);
+  border-radius: 1px; background: var(--lnr-ink);
   transform: scaleY(.4); transform-origin: bottom center;
 }
 .lnr-pill:hover .lnr-wave i,
@@ -276,7 +276,7 @@
 .lnr-icon:hover { background: var(--lnr-hover); color: var(--lnr-ink); }
 .lnr-icon svg { width: 15px; height: 15px; }
 .lnr-progress { height: 2px; background: var(--lnr-hover); flex: 0 0 auto; }
-.lnr-progress span { display: block; height: 100%; width: 0%; background: var(--lnr-accent); transition: width .35s ease; }
+.lnr-progress span { display: block; height: 100%; width: 0%; background: var(--lnr-ink); transition: width .35s ease; }
 
 .lnr-body {
   margin: 10px 10px 0;
@@ -306,7 +306,7 @@
 /* Read-along: the sentence being read in ink with its current word lit,
    then the sentences after it in muted text, filling the box. */
 .lnr-sentence .lnr-next { color: var(--lnr-muted); }
-.lnr-sentence .is-word { color: var(--lnr-accent); font-weight: 650; }
+.lnr-sentence .is-word { color: var(--lnr-ink); font-weight: 650; text-decoration: underline; text-decoration-color: var(--lnr-line); text-underline-offset: 4px; text-decoration-thickness: 2px; }
 .lnr-meta {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   margin-top: 8px;
@@ -328,10 +328,10 @@
   background: var(--lnr-accent);
   color: var(--lnr-on-accent);
   cursor: pointer;
-  box-shadow: 0 5px 18px rgba(200,70,35,.32);
+  box-shadow: none;
   transition: transform .15s, background .15s;
 }
-.lnr-play:hover { transform: scale(1.045); background: #0B3F38; }
+.lnr-play:hover { transform: scale(1.04); filter: brightness(1.08); }
 .lnr-play svg { width: 19px; height: 19px; }
 .lnr-speed {
   height: 30px;
@@ -404,7 +404,7 @@
   width: 13px; height: 13px;
   margin-top: -5px;
   border-radius: 50%;
-  background: var(--lnr-accent);
+  background: var(--lnr-ink);
   border: 2px solid var(--lnr-raised);
 }
 .lnr-presets { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 12px; }
@@ -429,7 +429,7 @@
   color: var(--lnr-muted) !important;
   cursor: pointer;
 }
-.lnr-follow input { accent-color: var(--lnr-accent); }
+.lnr-follow input { accent-color: var(--lnr-ink); }
 .lnr-reset {
   margin: 12px 0 0;
   border: 1px solid var(--lnr-line);
@@ -482,7 +482,7 @@
 .lnr-dock button i::after {
   content: "";
   position: absolute;
-  background: var(--lnr-accent);
+  background: var(--lnr-ink);
   border-radius: 1.5px;
 }
 .lnr-dock button[data-dock-btn="right"] i::after { right: 1px; top: 1px; bottom: 1px; width: 9px; }
@@ -493,8 +493,8 @@
   margin: 0 15px 12px;
   padding: 8px 10px;
   border-radius: 7px;
-  background: var(--lnr-accent-soft);
-  color: var(--lnr-accent);
+  background: var(--lnr-hover);
+  color: var(--lnr-ink);
   font: 500 12px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .lnr-panel-toast[hidden] { display: none; }
