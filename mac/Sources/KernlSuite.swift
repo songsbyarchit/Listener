@@ -1133,17 +1133,47 @@ final class KernlFeedbackField: NSView, NSTextFieldDelegate {
         status.isHidden = true
     }
 
+    /// Just "Learned", with a tick: the letters drift together and fade in.
+    /// The rule itself is in the tooltip, for anyone curious.
     func showLearned(_ rule: String?) {
         status.isHidden = false
-        status.stringValue = rule.map { "Learned: \($0.replacingOccurrences(of: "- ", with: ""))" } ?? "Saved. It applies from the next one."
+        status.toolTip = rule.map { $0.replacingOccurrences(of: "- ", with: "") }
+        learnTimer?.invalidate()
+        let frames = 14
+        var frame = 0
+        func render(_ t: CGFloat) {
+            let eased = 1 - pow(1 - t, 3)
+            let text = NSMutableAttributedString()
+            if let tick = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)?
+                .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)) {
+                let attachment = NSTextAttachment()
+                attachment.image = tick
+                text.append(NSAttributedString(attachment: attachment))
+                text.append(NSAttributedString(string: " "))
+            }
+            text.append(NSAttributedString(string: "Learned"))
+            text.addAttributes([
+                .font: Type.sans(11, .medium),
+                .foregroundColor: KernlTheme.ink.withAlphaComponent(0.25 + 0.75 * eased),
+                .kern: (1 - eased) * 3.5
+            ], range: NSRange(location: 0, length: text.length))
+            status.attributedStringValue = text
+        }
+        render(0)
+        learnTimer = Timer.scheduledTimer(withTimeInterval: 0.028, repeats: true) { [weak self] timer in
+            frame += 1
+            render(CGFloat(frame) / CGFloat(frames))
+            if frame >= frames { timer.invalidate(); self?.learnTimer = nil }
+        }
     }
+    private var learnTimer: Timer?
 
     @objc private func send() {
         let text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         field.stringValue = ""
         status.isHidden = false
-        status.stringValue = "Thanks. Learning from it…"
+        status.toolTip = nil; status.stringValue = "Learning…"
         onSubmit?(text)
     }
 }
