@@ -108,10 +108,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appearance.submenu = appearanceMenu
         menu.addItem(appearance)
 
-        let loom = NSMenu(title: "Kernl")
-        loom.addItem(item("Open Kernl folder", #selector(openKernlFolder)))
+        let loom = NSMenu(title: "kernl")
+        loom.addItem(item("Open kernl folder", #selector(openKernlFolder)))
         loom.addItem(item("Open Chrome extension folder", #selector(openExtensionFolder)))
-        let loomItem = NSMenuItem(title: "Kernl", action: nil, keyEquivalent: "")
+        let loomItem = NSMenuItem(title: "kernl", action: nil, keyEquivalent: "")
         loomItem.submenu = loom
         menu.addItem(loomItem)
         menu.addItem(.separator())

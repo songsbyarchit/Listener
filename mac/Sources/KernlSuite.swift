@@ -598,7 +598,7 @@ enum KernlAskLog {
             handle.write(entry.data(using: .utf8) ?? Data())
             try? handle.close()
         } else {
-            try? ("# Kernl knowledge base" + entry).write(to: faqURL, atomically: true, encoding: .utf8)
+            try? ("# kernl knowledge base" + entry).write(to: faqURL, atomically: true, encoding: .utf8)
         }
     }
 
@@ -610,7 +610,7 @@ enum KernlAskLog {
         var parts = URLComponents()
         parts.scheme = "mailto"
         parts.path = address
-        parts.queryItems = [URLQueryItem(name: "subject", value: "Kernl: \(open.count) unanswered question\(open.count == 1 ? "" : "s")"),
+        parts.queryItems = [URLQueryItem(name: "subject", value: "kernl: \(open.count) unanswered question\(open.count == 1 ? "" : "s")"),
                             URLQueryItem(name: "body", value: body)]
         return parts.url
     }
@@ -897,7 +897,7 @@ final class KernlInfoPage: NSView {
             row("Version", version),
             row("Developer", "songsbyarchit"),
             row("Built", formatter.string(from: built)),
-            row("Part of", "Kernl: speakr, listnr, writr and readr")
+            row("Part of", "kernl: speakr, listnr, writr and readr")
         ], spacing: 12))
         let note = fleetVStack([
             fleetLabel("Be lucky.", size: 22, weight: .medium, color: KernlTheme.ink, lines: 1),

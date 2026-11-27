@@ -379,7 +379,7 @@ final class KernlPage: NSView {
         mark.heightAnchor.constraint(equalToConstant: 44).isActive = true
         let words = fleetVStack([
             fleetEyebrow("kernl"),
-            fleetTitle("Kernl"),
+            fleetTitle("kernl"),
             fleetLabel("All four apps, one place. Settings live inside each app.",
                        size: 15, color: KernlTheme.muted, lines: 0)
         ], spacing: 6)
@@ -404,7 +404,7 @@ final class KernlPage: NSView {
         ], spacing: 10))
         let apps = KernlAppsCard()
         let ask = askCard()
-        let folder = fleetButton("Open Kernl folder", target: self, action: #selector(openFolder))
+        let folder = fleetButton("Open kernl folder", target: self, action: #selector(openFolder))
         let column = fleetVStack([header, stats, apps, appearance, ask, shortcuts, folder], spacing: 18)
         addSubview(column)
         NSLayoutConstraint.activate([
@@ -452,11 +452,11 @@ final class KernlPage: NSView {
         answerField.maximumNumberOfLines = 0
         answerField.lineBreakMode = .byWordWrapping
         answerField.translatesAutoresizingMaskIntoConstraints = false
-        answerField.stringValue = "Answers come only from the local Kernl FAQ, never the public web."
+        answerField.stringValue = "Answers come only from the local kernl FAQ, never the public web."
 
         let input = fleetHStack([questionField, askButton], spacing: 8)
         return KernlCard(content: fleetVStack([
-            fleetLabel("Ask Kernl", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1),
+            fleetLabel("Ask kernl", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1),
             input, answerField
         ], spacing: 10))
     }
@@ -464,7 +464,7 @@ final class KernlPage: NSView {
     @objc private func askTapped() {
         let query = questionField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
-        answerField.stringValue = "Searching the Kernl FAQ…"
+        answerField.stringValue = "Searching the kernl FAQ…"
         KernlKnowledge.answer(query) { [weak self] text in
             DispatchQueue.main.async { self?.answerField.stringValue = text }
         }
@@ -531,14 +531,14 @@ final class KernlAppsCard: NSView {
         guard names.indices.contains(sender.tag) else { return }
         let name = names[sender.tag]
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let display = name == "speakr" ? "Speakr" : name.capitalized
+        let display = name == "speakr" ? "speakr" : name
         let candidates: [URL] = [
             URL(fileURLWithPath: "/Applications/\(name).app"),
             URL(fileURLWithPath: "/Applications/\(display).app"),
             home.appendingPathComponent("Downloads/speakr/build/\(display).app"),
             home.appendingPathComponent("Downloads/speakr/build/\(display).app"),
-            home.appendingPathComponent("Downloads/writr/build/Writr.app"),
-            home.appendingPathComponent("Downloads/readr/build/Readr.app"),
+            home.appendingPathComponent("Downloads/writr/build/writr.app"),
+            home.appendingPathComponent("Downloads/readr/build/readr.app"),
             home.appendingPathComponent("Downloads/Listener/mac/build/listnr.app")
         ]
         for url in candidates where FileManager.default.fileExists(atPath: url.path) {
@@ -569,16 +569,16 @@ enum KernlKnowledge {
                 .sorted { $0.1 > $1.1 }
                 .prefix(3)
                 .map(\.0)
-            completion("Nothing in the Kernl knowledge base matches that closely. Did you mean: \(fallback.joined(separator: ", "))?")
+            completion("Nothing in the kernl knowledge base matches that closely. Did you mean: \(fallback.joined(separator: ", "))?")
             return
         }
         let context = top.map { "## \($0.0.title)\n\($0.0.body)" }.joined(separator: "\n\n")
         let prefix = best == 1 ? "This is a near match, not a full match. Closest entries: \(nearest.joined(separator: ", ")).\n\n" : ""
         guard let key = envKey() else {
-            completion(prefix + "Add OPENAI_API_KEY to ~/.fleet/fleet.env to use the Kernl assistant.")
+            completion(prefix + "Add OPENAI_API_KEY to ~/.fleet/fleet.env to use the kernl assistant.")
             return
         }
-        let system = "You are Kernl's local FAQ assistant. Answer only from the knowledge base entries below. If the answer is not in them, say so. Never use outside knowledge from the web."
+        let system = "You are kernl's local FAQ assistant. Answer only from the knowledge base entries below. If the answer is not in them, say so. Never use outside knowledge from the web."
         let user = "Question: \(query)\n\nKnowledge base:\n\(context)"
         let body: [String: Any] = [
             "model": "gpt-4o-mini",
@@ -620,7 +620,7 @@ enum KernlKnowledge {
         let parts = text.components(separatedBy: "\n## ").dropFirst()
         return parts.map { part in
             let lines = part.components(separatedBy: .newlines)
-            let title = lines.first?.trimmingCharacters(in: .whitespaces) ?? "Kernl"
+            let title = lines.first?.trimmingCharacters(in: .whitespaces) ?? "kernl"
             return Entry(title: title, body: lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }

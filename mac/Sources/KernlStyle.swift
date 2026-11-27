@@ -567,7 +567,7 @@ final class KernlRestorePill {
 /// Places a quick window in the bottom-right corner without covering another
 /// Kernl app's floating window, so listnr, readr and writr can be open at once.
 enum KernlPlacement {
-    static let suiteOwners: Set<String> = ["listnr", "readr", "writr", "Readr", "Writr", "Listnr", "Speakr", "speakr"]
+    static let suiteOwners: Set<String> = ["listnr", "readr", "writr", "speakr"]
 
     /// Frames of other suite apps' floating windows on screen, in AppKit coordinates.
     static func otherSuiteFrames(on screen: NSScreen) -> [NSRect] {
@@ -575,7 +575,7 @@ enum KernlPlacement {
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
         let primaryHeight = NSScreen.screens.first?.frame.height ?? screen.frame.height
         return list.compactMap { info in
-            guard let owner = info[kCGWindowOwnerName as String] as? String, suiteOwners.contains(owner),
+            guard let owner = info[kCGWindowOwnerName as String] as? String, suiteOwners.contains(owner.lowercased()),
                   (info[kCGWindowOwnerPID as String] as? Int32) != me,
                   (info[kCGWindowLayer as String] as? Int ?? 0) > 0,
                   let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],

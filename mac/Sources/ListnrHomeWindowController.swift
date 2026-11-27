@@ -96,7 +96,7 @@ final class ListnrHomeWindowController {
         let folders = KernlCard(content: fleetVStack([
             fleetLabel("Files", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1),
             fleetHStack([
-                fleetButton("Kernl folder", target: self, action: #selector(openKernlFolder)),
+                fleetButton("kernl folder", target: self, action: #selector(openKernlFolder)),
                 fleetButton("Chrome extension", target: self, action: #selector(openExtension)),
                 fleetButton("Keys", target: self, action: #selector(openKeys))
             ], spacing: 8)
