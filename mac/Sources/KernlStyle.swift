@@ -399,6 +399,7 @@ func fleetTextScroll(editable: Bool) -> (NSScrollView, NSTextView) {
     scroll.hasVerticalScroller = true
     scroll.autohidesScrollers = true
     scroll.drawsBackground = false
+    KernlScroller.apply(to: scroll)
     scroll.borderType = .noBorder
     let text = NSTextView()
     text.isEditable = editable
@@ -921,5 +922,32 @@ final class KernlIdleDismiss {
         window.orderOut(nil)
         onHide?()
         if undoEnabled { pill.show(near: frame, seconds: undoSeconds) }
+    }
+}
+
+
+/// A thin rod you can drag, with no track behind it. The page leaves room for
+/// it on the right, so it never covers anything.
+final class KernlScroller: NSScroller {
+    override class var isCompatibleWithOverlayScrollers: Bool { true }
+    override class func scrollerWidth(for controlSize: NSControl.ControlSize, scrollerStyle: NSScroller.Style) -> CGFloat { 10 }
+    override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
+    override func draw(_ dirtyRect: NSRect) { drawKnob() }
+    override func drawKnob() {
+        let knob = rect(for: .knob).insetBy(dx: 3, dy: 2)
+        guard knob.height > 0 else { return }
+        NSColor.labelColor.withAlphaComponent(0.55).setFill()
+        NSBezierPath(roundedRect: knob, xRadius: knob.width / 2, yRadius: knob.width / 2).fill()
+    }
+
+    /// Gives a scroll view the rod and keeps its content clear of it.
+    static func apply(to scroll: NSScrollView) {
+        scroll.hasVerticalScroller = true
+        scroll.verticalScroller = KernlScroller()
+        scroll.scrollerStyle = .overlay
+        scroll.autohidesScrollers = true
+        scroll.automaticallyAdjustsContentInsets = false
+        scroll.contentInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 14)
+        scroll.scrollerInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: -14)
     }
 }

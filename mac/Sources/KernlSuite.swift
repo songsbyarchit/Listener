@@ -431,10 +431,11 @@ enum KernlSuitePages {
             name.widthAnchor.constraint(equalToConstant: 56).isActive = true
             lead.append(name)
         }
-        let body = fleetVStack([text, metaLabel], spacing: 5)
+        let copy = KernlCopyButton(text: item.text)
+        let body = fleetVStack([text, KernlHoverRow.detailsLine(metaLabel, copy)], spacing: 3)
         body.setContentHuggingPriority(.defaultLow, for: .horizontal)
         let row = fleetHStack(lead + [time, body], spacing: 14, alignment: .top)
-        return KernlHoverRow.wrap(row, copying: item.text)
+        return KernlHoverRow(row: row, copy: copy)
     }
 
     // MARK: Profile
@@ -619,58 +620,82 @@ enum KernlAskLog {
 // MARK: FAQ
 
 enum KernlFAQ {
-    struct Entry { let title: String; let body: String }
+    struct Entry { let title: String; let body: String; var app: String = "kernl" }
+    static let apps = ["speakr", "listnr", "writr", "readr", "kernl"]
 
-    static func entries() -> [Entry] {
-        guard let text = try? String(contentsOf: KernlAskLog.faqURL, encoding: .utf8) else { return [] }
-        return text.components(separatedBy: "\n## ").dropFirst().map { part in
+    private static func parse(_ text: String, app: String) -> [Entry] {
+        text.components(separatedBy: "\n## ").dropFirst().map { part in
             let lines = part.components(separatedBy: .newlines)
             return Entry(title: lines.first?.trimmingCharacters(in: .whitespaces) ?? "",
-                         body: lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines))
-        }
+                         body: lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
+                         app: app)
+        }.filter { !$0.title.isEmpty && !$0.body.isEmpty }
     }
 
-    /// FAQs about one app, or all of them for Kernl.
+    private static var cache: (Date, [Entry])?
+
+    /// The hand-written answers in ~/.fleet/faqs.md, then each app's library in
+    /// ~/.fleet/faqs/<app>.md (about two hundred each), for matching questions.
+    static func entries() -> [Entry] {
+        if let cache, Date().timeIntervalSince(cache.0) < 30 { return cache.1 }
+        var list: [Entry] = []
+        if let text = try? String(contentsOf: KernlAskLog.faqURL, encoding: .utf8) { list += parse(text, app: "kernl") }
+        let folder = KernlAskLog.faqURL.deletingLastPathComponent().appendingPathComponent("faqs", isDirectory: true)
+        for app in apps {
+            if let text = try? String(contentsOf: folder.appendingPathComponent("\(app).md"), encoding: .utf8) {
+                list += parse(text, app: app)
+            }
+        }
+        cache = (Date(), list)
+        return list
+    }
+
+    /// FAQs about one app, or all of them for kernl.
     static func entries(for app: String?) -> [Entry] {
         let list = entries()
         guard let app, app != "kernl" else { return list }
-        return list.filter { ($0.title + " " + $0.body).lowercased().contains(app) }
+        let own = list.filter { $0.app == app }
+        return own.isEmpty ? list.filter { ($0.title + " " + $0.body).lowercased().contains(app) } : own
     }
 
     static func tokens(_ text: String) -> Set<String> {
         Set(KernlWords.words(text).filter { !KernlWords.stop.contains($0) && !["kernl", "app", "apps"].contains($0) })
     }
 
-    /// The best entries for a question, strongest first. An entry counts when
-    /// it shares at least two meaningful words, or one for a short question.
+    /// The best entries for a question, strongest first, from every app's FAQ.
+    /// The app you are in gets a small head start.
     static func matches(_ question: String, app: String?) -> [Entry] {
         let q = tokens(question)
         guard !q.isEmpty else { return [] }
         let needed = q.count <= 2 ? 1 : 2
+        let named = apps.first { question.lowercased().contains($0) }
         return entries().map { entry -> (Entry, Int) in
             let title = tokens(entry.title)
             let hay = title.union(tokens(entry.body))
             var score = q.reduce(0) { $0 + (hay.contains($1) ? 1 : 0) } + q.reduce(0) { $0 + (title.contains($1) ? 1 : 0) }
-            if let app, (entry.title + entry.body).lowercased().contains(app) { score += 1 }
+            if let named { if entry.app == named { score += 2 } } else if let app, entry.app == app { score += 1 }
             return (entry, score)
         }
         .filter { $0.1 >= needed }
         .sorted { $0.1 > $1.1 }
-        .prefix(3).map(\.0)
+        .prefix(4).map(\.0)
     }
 
-    /// Answers from the FAQ only. No match means a plain "no answer yet", and
-    /// the question is saved for you to answer.
+    /// Answers from the FAQ only. A question about another app is still
+    /// answered, with a note saying which app it is about. No match means a
+    /// plain "no answer yet", and the question is saved for you to answer.
     static func ask(_ question: String, app: String, completion: @escaping (String, Bool) -> Void) {
         let found = matches(question, app: app)
+        let other = found.first.map(\.app).flatMap { $0 != app && $0 != "kernl" && app != "kernl" ? $0 : nil }
+        let note = other.map { "That's about \($0), and you're in \(app). " } ?? ""
         let finish: (String, Bool) -> Void = { text, matched in
             KernlAskLog.record(app: app, question: question, answer: matched ? text : "", matched: matched)
-            DispatchQueue.main.async { completion(text, matched) }
+            DispatchQueue.main.async { completion(matched ? note + text : text, matched) }
         }
         let noMatch = "No answer yet. Saved, so it can be added to the FAQ."
         guard !found.isEmpty else { return finish(noMatch, false) }
         guard let key = envKey() else { return finish(found[0].body, true) }
-        let context = found.map { "## \($0.title)\n\($0.body)" }.joined(separator: "\n\n")
+        let context = found.map { "## \($0.title) (\($0.app))\n\($0.body)" }.joined(separator: "\n\n")
         let body: [String: Any] = [
             "model": "gpt-4o-mini", "temperature": 0.1,
             "messages": [
@@ -725,29 +750,57 @@ final class KernlFAQPage: NSView, NSTextFieldDelegate {
         translatesAutoresizingMaskIntoConstraints = false
         field.placeholderString = "Ask a question"
         field.font = Type.sans(14)
-        field.bezelStyle = .roundedBezel
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
         field.delegate = self
         field.target = self
         field.action = #selector(askTapped)
         field.translatesAutoresizingMaskIntoConstraints = false
-        field.heightAnchor.constraint(equalToConstant: 32).isActive = true
+        // The field sits centred in its own rounded box, the same height as the button.
+        let box = NSView()
+        box.translatesAutoresizingMaskIntoConstraints = false
+        box.wantsLayer = true
+        box.layer?.cornerRadius = 10
+        box.layer?.borderWidth = 1
+        box.layer?.borderColor = KernlTheme.lineStrong.cgColor
+        box.addSubview(field)
+        NSLayoutConstraint.activate([
+            box.heightAnchor.constraint(equalToConstant: (36 * Type.scale).rounded()),
+            field.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 12),
+            field.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -12),
+            field.centerYAnchor.constraint(equalTo: box.centerYAnchor)
+        ])
         let ask = fleetButton("Ask", primary: true, target: self, action: #selector(askTapped))
         answer.isHidden = true
-        let askCard = KernlCard(content: fleetVStack([fleetHStack([field, ask], spacing: 10), answer], spacing: 12))
+        let askCard = KernlCard(content: fleetVStack([fleetHStack([box, ask], spacing: 10, alignment: .centerY), answer], spacing: 12))
         list.orientation = .vertical
         list.alignment = .leading
         list.spacing = 18
         list.translatesAutoresizingMaskIntoConstraints = false
+        // Eight questions on the page, each opening with its arrow. kernl shows
+        // eight for every app; the rest are found through the question box.
         let entries = KernlFAQ.entries(for: app)
-        for entry in entries {
-            let item = fleetVStack([fleetLabel(entry.title, size: 14, weight: .medium, color: KernlTheme.ink, lines: 0),
-                                    fleetLabel(entry.body.replacingOccurrences(of: "`", with: ""), size: 13, color: KernlTheme.muted, lines: 0)],
-                                   spacing: 4)
-            list.addArrangedSubview(item)
-            item.widthAnchor.constraint(equalTo: list.widthAnchor).isActive = true
+        let groups: [(String, [KernlFAQ.Entry])] = app == "kernl"
+            ? KernlFAQ.apps.compactMap { name in
+                let own = entries.filter { $0.app == name }
+                return own.isEmpty ? nil : (name, Array(own.prefix(8)))
+            }
+            : [("", Array(entries.prefix(8)))]
+        for (name, items) in groups {
+            if !name.isEmpty {
+                list.addArrangedSubview(fleetLabel(name, size: 13, weight: .medium, color: KernlTheme.muted, lines: 1))
+            }
+            for entry in items {
+                let row = KernlFAQRow(entry, ink: KernlTheme.ink, muted: KernlTheme.muted)
+                list.addArrangedSubview(row)
+                row.widthAnchor.constraint(equalTo: list.widthAnchor).isActive = true
+            }
         }
         if entries.isEmpty {
             list.addArrangedSubview(fleetLabel("No questions yet. Ask one above.", size: 13, color: KernlTheme.muted, lines: 1))
+        } else {
+            list.addArrangedSubview(fleetLabel("\(entries.count) answers in all. Ask above to search them.", size: 12, color: KernlTheme.muted, lines: 1))
         }
         let listCard = KernlCard(content: fleetVStack([fleetLabel("Questions", size: 15, weight: .medium, color: KernlTheme.ink, lines: 1), list], spacing: 14))
         let column = fleetVStack([KernlAppShell.pageHeader(eyebrow: "", title: "FAQ", subtitle: subtitle), askCard, listCard], spacing: 18)
@@ -1211,11 +1264,10 @@ final class KernlHoverRow: NSView {
         }
     }
 
-    /// Wraps `content` with a copy button for `text` on its trailing edge.
-    static func wrap(_ content: NSView, copying text: String) -> NSView {
-        let copy = KernlCopyButton(text: text)
-        content.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        return KernlHoverRow(row: fleetHStack([content, copy], spacing: 8, alignment: .top), copy: copy)
+    /// The details line with the copy icon right after it, next to the text.
+    /// Every app puts copy here, so it is always in the same place.
+    static func detailsLine(_ details: NSView, _ copy: KernlCopyButton) -> NSView {
+        fleetHStack([details, copy, fleetSpacer()], spacing: 4, alignment: .centerY)
     }
 }
 
@@ -1260,5 +1312,68 @@ final class KernlCopyButton: NSButton {
         let work = DispatchWorkItem { [weak self] in self?.showIcon(copied: false) }
         resetWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.4, execute: work)
+    }
+}
+
+
+/// One question. Click it, or its arrow, to show the answer.
+final class KernlFAQRow: NSView {
+    private let answer: NSTextField
+    private let chevron = NSImageView()
+    private var open = false
+
+    init(_ entry: KernlFAQ.Entry, ink: NSColor, muted: NSColor) {
+        let question = NSTextField(wrappingLabelWithString: entry.title)
+        question.font = Type.sans(14, .medium)
+        question.textColor = ink
+        question.isSelectable = false
+        answer = NSTextField(wrappingLabelWithString: entry.body.replacingOccurrences(of: "`", with: ""))
+        answer.font = Type.sans(13)
+        answer.textColor = muted
+        answer.isHidden = true
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        chevron.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
+        chevron.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+        chevron.contentTintColor = muted
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        chevron.widthAnchor.constraint(equalToConstant: 14).isActive = true
+        for view in [question, answer] {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            addSubview(view)
+        }
+        addSubview(chevron)
+        let answerBottom = answer.bottomAnchor.constraint(equalTo: bottomAnchor)
+        let questionBottom = question.bottomAnchor.constraint(equalTo: bottomAnchor)
+        self.answerBottom = answerBottom
+        self.questionBottom = questionBottom
+        NSLayoutConstraint.activate([
+            chevron.leadingAnchor.constraint(equalTo: leadingAnchor),
+            chevron.centerYAnchor.constraint(equalTo: question.firstBaselineAnchor, constant: -4),
+            question.topAnchor.constraint(equalTo: topAnchor),
+            question.leadingAnchor.constraint(equalTo: chevron.trailingAnchor, constant: 10),
+            question.trailingAnchor.constraint(equalTo: trailingAnchor),
+            answer.topAnchor.constraint(equalTo: question.bottomAnchor, constant: 6),
+            answer.leadingAnchor.constraint(equalTo: question.leadingAnchor),
+            answer.trailingAnchor.constraint(equalTo: trailingAnchor),
+            questionBottom
+        ])
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(entry.title)
+    }
+    private var answerBottom: NSLayoutConstraint?
+    private var questionBottom: NSLayoutConstraint?
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func mouseDown(with event: NSEvent) { toggle() }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+
+    func toggle() {
+        open.toggle()
+        answer.isHidden = !open
+        questionBottom?.isActive = !open
+        answerBottom?.isActive = open
+        chevron.image = NSImage(systemSymbolName: open ? "chevron.down" : "chevron.right", accessibilityDescription: nil)
     }
 }

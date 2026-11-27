@@ -247,6 +247,7 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         scroll.autohidesScrollers = true
         scroll.drawsBackground = false
         scroll.borderType = .noBorder
+        KernlScroller.apply(to: scroll)
         let document = KernlFlippedView()
         document.translatesAutoresizingMaskIntoConstraints = false
         document.addSubview(page)
