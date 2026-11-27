@@ -511,8 +511,10 @@ final class KernlRestorePill {
     private let panel: NSPanel
     private var hideWork: DispatchWorkItem?
 
+    /// A small rounded tile with the app's mark and a little back arrow on top.
+    /// Click it to bring the popup back. `title` is kept for the accessibility label.
     init(title: String) {
-        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 96, height: 36),
+        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 52, height: 52),
                         styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: false)
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = true
@@ -525,21 +527,38 @@ final class KernlRestorePill {
         let card = KernlPanelCard()
         card.translatesAutoresizingMaskIntoConstraints = false
         panel.contentView = card
-        let button = NSButton(title: title, target: nil, action: nil)
+        let mark = Bundle.main.image(forResource: "Mark") ?? NSApp.applicationIconImage ?? NSImage()
+        let button = NSButton(image: mark, target: self, action: #selector(restore))
         button.isBordered = false
-        button.image = NSImage(systemSymbolName: "arrow.uturn.backward", accessibilityDescription: nil)
-        button.imagePosition = .imageLeading
-        button.attributedTitle = NSAttributedString(string: title, attributes: [
-            .font: Type.sans(13, .medium), .foregroundColor: KernlTheme.ink
-        ])
-        button.contentTintColor = KernlTheme.accent
+        button.imageScaling = .scaleProportionallyUpOrDown
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.target = self
-        button.action = #selector(restore)
+        let appName = (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String) ?? "app"
+        button.toolTip = "Bring back \(appName)"
+        button.setAccessibilityLabel("\(title): bring back \(appName)")
         card.addSubview(button)
+        // The back arrow sits on a small disc over the mark's top-right corner.
+        let badge = NSView()
+        badge.translatesAutoresizingMaskIntoConstraints = false
+        badge.wantsLayer = true
+        badge.layer?.cornerRadius = 8
+        badge.layer?.backgroundColor = KernlTheme.ink.cgColor
+        let arrow = NSImageView(image: NSImage(systemSymbolName: "arrow.uturn.backward", accessibilityDescription: nil) ?? NSImage())
+        arrow.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 8, weight: .bold)
+        arrow.contentTintColor = KernlTheme.paper
+        arrow.translatesAutoresizingMaskIntoConstraints = false
+        badge.addSubview(arrow)
+        card.addSubview(badge)
         NSLayoutConstraint.activate([
             button.centerXAnchor.constraint(equalTo: card.centerXAnchor),
-            button.centerYAnchor.constraint(equalTo: card.centerYAnchor)
+            button.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            button.widthAnchor.constraint(equalToConstant: 30),
+            button.heightAnchor.constraint(equalToConstant: 30),
+            badge.widthAnchor.constraint(equalToConstant: 16),
+            badge.heightAnchor.constraint(equalToConstant: 16),
+            badge.centerXAnchor.constraint(equalTo: button.trailingAnchor, constant: -2),
+            badge.centerYAnchor.constraint(equalTo: button.topAnchor, constant: 2),
+            arrow.centerXAnchor.constraint(equalTo: badge.centerXAnchor),
+            arrow.centerYAnchor.constraint(equalTo: badge.centerYAnchor)
         ])
     }
 
