@@ -929,12 +929,58 @@ enum KernlFeedback {
     static let rulesURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".fleet/learned.md")
     static let keepFor: TimeInterval = 24 * 3600
 
-    /// Rules to add to a system prompt. Empty when there are none.
-    static func promptNote() -> String {
+    static let bansURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".fleet/learned-bans.json")
+
+    /// Only the rules that apply here: ones naming a person or app found in
+    /// `context`, plus the "everywhere" rules, newest first, eight at most.
+    /// Keeps the prompt short however much feedback builds up.
+    static func promptNote(matching context: String = "") -> String {
         guard let text = try? String(contentsOf: rulesURL, encoding: .utf8) else { return "" }
-        let rules = text.components(separatedBy: .newlines).filter { $0.hasPrefix("- ") }.suffix(30)
+        let haystack = context.lowercased()
+        let rules = text.components(separatedBy: .newlines).filter { $0.hasPrefix("- ") }.reversed().filter { line in
+            guard let close = line.firstIndex(of: "]"), let open = line.firstIndex(of: "[") else { return false }
+            let tags = line[line.index(after: open)..<close].lowercased()
+                .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            return tags.contains("everywhere") || tags.contains { !$0.isEmpty && haystack.contains($0) }
+        }.prefix(8)
         guard !rules.isEmpty else { return "" }
-        return "\n\nLearned from his feedback (follow these; a rule about the person or app on screen beats the rest):\n" + rules.joined(separator: "\n")
+        return "\n\nLearned from his feedback (follow these):\n" + rules.joined(separator: "\n")
+    }
+
+    struct Ban: Codable { var text: String; var person: String; var place: String }
+
+    static func bans() -> [Ban] {
+        guard let data = try? Data(contentsOf: bansURL) else { return [] }
+        return (try? JSONDecoder().decode([Ban].self, from: data)) ?? []
+    }
+
+    /// Removes words and emoji you said never to use, when they apply to the
+    /// person or app in `context`. Done in code, so it costs no prompt.
+    static func clean(_ output: String, matching context: String) -> String {
+        let haystack = context.lowercased()
+        var text = output
+        for ban in bans() where !ban.text.isEmpty {
+            let scoped = [ban.person, ban.place].filter { !$0.isEmpty }
+            guard scoped.isEmpty || scoped.contains(where: { haystack.contains($0.lowercased()) }) else { continue }
+            let escaped = NSRegularExpression.escapedPattern(for: ban.text)
+            let isWord = ban.text.unicodeScalars.allSatisfy { CharacterSet.alphanumerics.contains($0) || $0 == " " }
+            let pattern = isWord ? "(?i)\\b\(escaped)\\b" : escaped
+            text = text.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+        }
+        // Tidy the gaps a removal leaves.
+        text = text.replacingOccurrences(of: " {2,}", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: " ([,.!?])", with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: "[,;:]+([.!?])", with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: ",{2,}", with: ",", options: .regularExpression)
+        return text.trimmingCharacters(in: .whitespaces)
+    }
+
+    private static func addBans(_ list: [String], person: String, place: String) {
+        let clean = list.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty && $0.count <= 40 }
+        guard !clean.isEmpty else { return }
+        var all = bans().filter { ban in !clean.contains { $0.lowercased() == ban.text.lowercased() && ban.person == person && ban.place == place } }
+        all += clean.map { Ban(text: $0, person: person, place: place) }
+        if let data = try? JSONEncoder().encode(Array(all.suffix(200))) { try? data.write(to: bansURL, options: .atomic) }
     }
 
     static func submit(app: String, note: String, output: String, place: String,
@@ -989,10 +1035,11 @@ enum KernlFeedback {
                               done: @escaping (String?) -> Void) {
         guard let key = KernlFAQ.envKey() else { return done(nil) }
         let instructions = """
-        Archit gave feedback on something \(app) wrote for him. Using his note, what \(app) wrote and the screenshot,         write rules for next time. Reply with JSON only: {"person": "", "place": "", "rule": "", "general": ""}.
+        Archit gave feedback on something \(app) wrote for him. Using his note, what \(app) wrote and the screenshot,         write rules for next time. Reply with JSON only: {"person": "", "place": "", "rule": "", "general": "", "never": []}.
         person: the name of the person in the chat on screen, if there is one. place: the app or site (WhatsApp, Slack, LinkedIn, email).
         rule: one short imperative about this person or place, such as "Keanu is a close friend: reply casually, short, no formalities".
         general: one short rule that applies everywhere, only if the note implies one, else "".
+        never: exact emoji or words he said never to use, e.g. ["😂"] for "i never use 😂". Empty if none.
         """
         var content: [[String: Any]] = [["type": "text", "text": "Note: \(note)\nWhat \(app) wrote: \(output.prefix(1500))\nApp in front: \(place)"]]
         if let data = try? Data(contentsOf: screenshot) {
@@ -1013,17 +1060,21 @@ enum KernlFeedback {
                   let choices = object["choices"] as? [[String: Any]],
                   let message = choices.first?["message"] as? [String: Any],
                   let text = message["content"] as? String,
-                  let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: String] else {
+                  let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any] else {
                 return done(nil)
             }
             var lines: [String] = []
-            let person = json["person"]?.trimmingCharacters(in: .whitespaces) ?? ""
-            let where_ = (json["place"]?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 } ?? place
-            if let rule = json["rule"], !rule.isEmpty {
+            let person = (json["person"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
+            let where_ = ((json["place"] as? String)?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 } ?? place
+            if let never = json["never"] as? [String] {
+                // A ban about a specific person applies to them; otherwise everywhere.
+                addBans(never, person: person, place: person.isEmpty ? "" : where_)
+            }
+            if let rule = json["rule"] as? String, !rule.isEmpty {
                 let tag = [person, where_].filter { !$0.isEmpty }.joined(separator: ", ")
                 lines.append("- [\(tag.isEmpty ? app : tag)] \(rule)")
             }
-            if let general = json["general"], !general.isEmpty { lines.append("- [everywhere] \(general)") }
+            if let general = json["general"] as? String, !general.isEmpty { lines.append("- [everywhere] \(general)") }
             append(lines)
             done(lines.first)
         }.resume()
