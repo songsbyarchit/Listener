@@ -149,7 +149,8 @@ final class KernlStatGrid: NSView {
          valueSize fixedSize: CGFloat? = nil) {
         self.spacing = spacing
         self.minTileWidth = minTileWidth
-        self.tileHeight = tileHeight
+        // Taller tiles at bigger text sizes, so footnotes are never cut off.
+        self.tileHeight = (tileHeight * max(1, Type.scale)).rounded()
         // One value size per row, set by the longest value, so the strip reads evenly.
         let count = items.map { $0.value.count }.max() ?? 0
         self.cards = items.map { item in
