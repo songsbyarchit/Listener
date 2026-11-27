@@ -21,13 +21,24 @@ final class KernlSidebarRow: NSView {
         label.font = Type.sans(14, .medium)
         label.textColor = KernlTheme.muted
         addSubview(label)
+        height = heightAnchor.constraint(equalToConstant: KernlSidebarRow.rowHeight)
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 32),
+            height,
             label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
             label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -10),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor)
+            label.centerYAnchor.constraint(equalTo: centerYAnchor, constant: 1)
         ])
         wantsLayer = true
+    }
+    private var height: NSLayoutConstraint!
+
+    /// The same in every app: 34 points at normal size, growing with the text.
+    static var rowHeight: CGFloat { (34 * Type.scale).rounded() }
+
+    /// Picks up a new shared text size without rebuilding the window.
+    func restyle() {
+        label.font = Type.sans(14, .medium)
+        height.constant = Self.rowHeight
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -157,9 +168,12 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
 
         let sidebar = KernlBackdrop()
         sidebar.translatesAutoresizingMaskIntoConstraints = false
+        sidebarWidth = sidebar.widthAnchor.constraint(equalToConstant: Self.sidebarWidthValue)
 
         let name = fleetLabel(appName, size: 20, weight: .semibold, color: KernlTheme.ink, lines: 1)
         let tag = fleetLabel(tagline, size: 12, color: KernlTheme.muted, lines: 2)
+        brandName = name
+        brandTag = tag
         let brand = fleetHStack([KernlMarkView(kind: mark, size: 30), name], spacing: 8)
         let brandBlock = fleetVStack([brand, tag], spacing: 4)
         brandBlock.translatesAutoresizingMaskIntoConstraints = false
@@ -187,7 +201,7 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
             sidebar.topAnchor.constraint(equalTo: root.topAnchor),
             sidebar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             sidebar.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-            sidebar.widthAnchor.constraint(equalToConstant: 200),
+            sidebarWidth,
             brandBlock.topAnchor.constraint(equalTo: sidebar.topAnchor, constant: 26),
             brandBlock.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor, constant: 20),
             brandBlock.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: -12),
@@ -281,13 +295,27 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
     }
 
     private var scaleObserver: NSObjectProtocol?
+    private var brandName: NSTextField?
+    private var brandTag: NSTextField?
+    private var sidebarWidth: NSLayoutConstraint!
+    static var sidebarWidthValue: CGFloat { (200 * max(1, Type.scale)).rounded() }
+
+    /// The sidebar follows the shared text size too, not just the page.
+    private func restyleSidebar() {
+        rows.forEach { $0.restyle() }
+        brandName?.font = Type.sans(20, .semibold)
+        brandTag?.font = Type.sans(12)
+        sidebarWidth?.constant = Self.sidebarWidthValue
+    }
 
     /// Rebuilds the open page when the shared text size changes.
     private func followTextSize() {
         guard scaleObserver == nil else { return }
         scaleObserver = NotificationCenter.default.addObserver(forName: KernlAppearance.textScaleChanged,
                                                                object: nil, queue: .main) { [weak self] _ in
-            guard let self, self.window?.isVisible == true else { return }
+            guard let self else { return }
+            self.restyleSidebar()
+            guard self.window?.isVisible == true else { return }
             self.reloadCurrent()
         }
     }
