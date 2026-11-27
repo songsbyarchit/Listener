@@ -777,3 +777,93 @@ final class KernlPromptField: NSTextField, NSTextFieldDelegate {
         }
     }
 }
+
+
+/// Closes a popup after a quiet spell: a countdown runs for the last few
+/// seconds, then the popup hides and an Undo pill can bring it back. Any click,
+/// scroll or key inside the popup restarts the wait, whether or not it lands on
+/// a button, and the popup never closes while the pointer is over it.
+final class KernlIdleDismiss {
+    var idleSeconds: Double
+    var countdownSeconds: Double
+    var undoSeconds: Double
+    var undoEnabled = true
+    var enabled = true
+    /// Extra reasons to wait, such as a field being typed in.
+    var isHeld: () -> Bool = { false }
+    var onHide: (() -> Void)?
+    var onRestore: (() -> Void)?
+
+    private weak var window: NSWindow?
+    private let countdown: KernlCountdown
+    private var warnWork: DispatchWorkItem?
+    private var closeWork: DispatchWorkItem?
+    private var monitor: Any?
+    private lazy var pill: KernlRestorePill = {
+        let pill = KernlRestorePill(title: "Undo")
+        pill.onRestore = { [weak self] in
+            guard let self else { return }
+            self.window?.orderFrontRegardless()
+            self.onRestore?()
+            self.arm()
+        }
+        return pill
+    }()
+
+    init(window: NSWindow, countdown: KernlCountdown, idle: Double, countdown last: Double, undo: Double = 3) {
+        self.window = window
+        self.countdown = countdown
+        self.idleSeconds = idle
+        self.countdownSeconds = last
+        self.undoSeconds = undo
+        monitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel, .keyDown]
+        ) { [weak self] event in
+            if let self, event.window === self.window, self.isArmed { self.arm() }
+            return event
+        }
+    }
+
+    deinit { if let monitor { NSEvent.removeMonitor(monitor) } }
+
+    private(set) var isArmed = false
+
+    /// Starts, or restarts, the wait.
+    func arm() {
+        cancel()
+        guard enabled, let window, window.isVisible else { return }
+        isArmed = true
+        let warn = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.countdown.start(seconds: self.countdownSeconds)
+        }
+        warnWork = warn
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0, idleSeconds - countdownSeconds), execute: warn)
+        let close = DispatchWorkItem { [weak self] in self?.closeNow() }
+        closeWork = close
+        DispatchQueue.main.asyncAfter(deadline: .now() + idleSeconds, execute: close)
+    }
+
+    /// Stops the wait, for example while the popup is busy.
+    func cancel() {
+        isArmed = false
+        warnWork?.cancel()
+        closeWork?.cancel()
+        countdown.cancel()
+    }
+
+    func hideUndo() { pill.hide() }
+
+    private func closeNow() {
+        guard let window else { return }
+        if isHeld() || window.frame.contains(NSEvent.mouseLocation) {
+            arm()
+            return
+        }
+        cancel()
+        let frame = window.frame
+        window.orderOut(nil)
+        onHide?()
+        if undoEnabled { pill.show(near: frame, seconds: undoSeconds) }
+    }
+}

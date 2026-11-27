@@ -44,15 +44,19 @@ final class PlayerHUD: NSPanel {
     private let countdown = KernlCountdown()
     /// Paused players close after this long, with a countdown and an undo.
     static let pausedSeconds: Double = 7
-    private lazy var undoPill: KernlRestorePill = {
-        let pill = KernlRestorePill(title: "Undo")
-        pill.onRestore = { [weak self] in
+    /// Same close as the writr and readr bubbles: only while paused, clicks
+    /// anywhere on the player restart it, hovering holds it.
+    private lazy var idle: KernlIdleDismiss = {
+        let idle = KernlIdleDismiss(window: self, countdown: countdown,
+                                    idle: Self.pausedSeconds, countdown: 3, undo: 3)
+        idle.onHide = { [weak self] in
             guard let self else { return }
-            self.stopAfterUndoWindow?.cancel()
-            self.orderFrontRegardless()
-            self.closeWhenIdle()
+            let stop = DispatchWorkItem { [weak self] in self?.onStop?() }
+            self.stopAfterUndoWindow = stop
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.2, execute: stop)
         }
-        return pill
+        idle.onRestore = { [weak self] in self?.stopAfterUndoWindow?.cancel() }
+        return idle
     }()
     private var stopAfterUndoWindow: DispatchWorkItem?
 
@@ -219,9 +223,9 @@ final class PlayerHUD: NSPanel {
     /// Starts a new read-along for `text`.
     func show(text: String, status textStatus: String) {
         hideWork?.cancel()
-        countdown.cancel()
+        idle.cancel()
         stopAfterUndoWindow?.cancel()
-        undoPill.hide()
+        idle.hideUndo()
         timeline = ReadAlongTimeline(text)
         lines = timeline.lines(maxWords: 12)
         currentWord = -1
@@ -245,7 +249,7 @@ final class PlayerHUD: NSPanel {
             status.stringValue = "Reading"
             setPauseIcon(paused: false)
             hideWork?.cancel()
-            countdown.cancel()
+            idle.cancel()
             startTicker()
         case .paused:
             status.stringValue = "Paused"
@@ -367,19 +371,7 @@ final class PlayerHUD: NSPanel {
     /// paused; if nobody does, the read stops.
     private func closeWhenIdle() {
         hideWork?.cancel()
-        countdown.start(seconds: Self.pausedSeconds)
-        let work = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            self.countdown.cancel()
-            let frame = self.frame
-            self.orderOut(nil)
-            self.undoPill.show(near: frame)
-            let stop = DispatchWorkItem { [weak self] in self?.onStop?() }
-            self.stopAfterUndoWindow = stop
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6.2, execute: stop)
-        }
-        hideWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.pausedSeconds, execute: work)
+        idle.arm()
     }
 
     private func scheduleHide(after seconds: Double) {
@@ -426,8 +418,8 @@ final class PlayerHUD: NSPanel {
 
     @objc private func closeTapped() {
         onStop?()
-        countdown.cancel()
-        undoPill.hide()
+        idle.cancel()
+        idle.hideUndo()
         hideWork?.cancel()
         ticker?.invalidate()
         orderOut(nil)
