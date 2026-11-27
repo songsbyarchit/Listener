@@ -231,7 +231,7 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
     /// the back button returns to the page the tile came from.
     func showDetail(title: String, subtitle: String, body: [NSView]) {
         let origin = sections.indices.contains(selected) ? sections[selected] : "Home"
-        let back = fleetButton("Back to \(origin.lowercased())", target: self, action: #selector(closeDetail))
+        let back = KernlBackButton(target: self, action: #selector(closeDetail))
         let header = Self.pageHeader(eyebrow: "", title: title, subtitle: subtitle)
         let page = fleetVStack([fleetHStack([back, fleetSpacer()], spacing: 0), header] + body, spacing: 18)
         install(page, activate: false)
@@ -268,6 +268,9 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
         ])
         if activate, let window {
             if !window.isVisible { KernlWindowSize.reset(window) }
+            // The home window puts the app in the Dock and the app switcher
+            // while it is open; closing it hides the app again (onClose).
+            if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
             showWindow(nil)
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)

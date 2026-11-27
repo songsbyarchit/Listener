@@ -430,6 +430,17 @@
   cursor: pointer;
 }
 .lnr-follow input { accent-color: var(--lnr-accent); }
+.lnr-reset {
+  margin: 12px 0 0;
+  border: 1px solid var(--lnr-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lnr-muted);
+  padding: 6px 12px;
+  font: 600 12px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+}
+.lnr-reset:hover { background: var(--lnr-hover); color: var(--lnr-ink); }
 .lnr-hint { margin: 9px 0 0; color: var(--lnr-faint); font: 500 12px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
 
 /* Pin-position picker */
@@ -1324,7 +1335,7 @@
             <button class="lnr-play" type="button" title="Play" aria-label="Play">${ICON.play}</button>
             <button class="lnr-icon lnr-next" type="button" title="Next sentence" aria-label="Next sentence">${ICON.next}</button>
             <button class="lnr-icon lnr-stop" type="button" title="Stop" aria-label="Stop">${ICON.stop}</button>
-            <button class="lnr-speed" type="button" title="Playback settings">1×</button>
+            <button class="lnr-speed" type="button" title="Change speed">1×</button>
             <button class="lnr-icon lnr-settings-btn" type="button" title="Settings" aria-label="Settings">${ICON.gear}</button>
           </div>
           <div class="lnr-settings" hidden>
@@ -1341,6 +1352,7 @@
             <label>Sentence pause <b class="lnr-sentence-gap-value">160 ms</b><input class="lnr-sentence-gap" type="range" min="0" max="600" step="20" value="160"></label>
             <label>Paragraph pause <b class="lnr-paragraph-gap-value">600 ms</b><input class="lnr-paragraph-gap" type="range" min="0" max="1500" step="50" value="600"></label>
             <label class="lnr-follow"><input class="lnr-follow-input" type="checkbox" ${state.follow ? 'checked' : ''}> Follow highlighted text</label>
+            <button class="lnr-reset" type="button">Reset to defaults</button>
             <p class="lnr-hint">The page text is highlighted as it plays. Drag the player by its header to move it anywhere; drag the pill to snap it to a page edge. Drag the player's edges or corners to resize. Playback settings are shared with the listnr toolbar popup.</p>
           </div>
           <div class="lnr-panel-toast" role="status" aria-live="polite" hidden></div>
@@ -1390,7 +1402,8 @@
       follow: shadow.querySelector('.lnr-follow-input'),
       dockButtons: [...shadow.querySelectorAll('.lnr-dock button')],
       panelToast: shadow.querySelector('.lnr-panel-toast'),
-      minimize: shadow.querySelector('.lnr-min')
+      minimize: shadow.querySelector('.lnr-min'),
+      reset: shadow.querySelector('.lnr-reset')
     };
 
     applyDock();
@@ -1431,7 +1444,8 @@
     refs.prev.addEventListener('click', () => skip(-1));
     refs.next.addEventListener('click', () => skip(1));
     refs.stop.addEventListener('click', stopPlayback);
-    refs.speed.addEventListener('click', toggleSettings);
+    refs.speed.addEventListener('click', cycleRate);
+    refs.reset.addEventListener('click', resetDefaults);
     refs.settingsBtn.addEventListener('click', toggleSettings);
 
     for (const speed of [0.8, 1, 1.25, 1.5, 2, 2.5, 3]) {
@@ -1502,14 +1516,20 @@
 
     chrome.runtime.onMessage.addListener((message) => {
       if (message?.type === 'listnr:listen-page') {
+        // Option L opens the player and starts reading straight away; pressed
+        // again while reading, it pauses.
         ensureUI();
-        if (state.doc) showPanel();
-        else startImport();
+        if (state.doc) {
+          showPanel();
+          togglePlay();
+        } else {
+          startImport({ play: true });
+        }
       }
     });
   }
 
-  async function startImport() {
+  async function startImport({ play = false } = {}) {
     if (state.importing) return;
     if (state.doc) {
       showPanel();
@@ -1546,6 +1566,7 @@
       setPillLoading(false);
       showPanel();
       loadVoices();
+      if (play && state.playback !== 'playing' && state.playback !== 'loading') togglePlay();
     } catch (error) {
       state.importing = false;
       setPillLoading(false);
@@ -1740,6 +1761,24 @@
     refs.presets.querySelectorAll('button').forEach((button) => {
       button.classList.toggle('is-on', Math.abs(Number(button.dataset.speed) - rate) < 0.001);
     });
+  }
+
+  // The speed button steps through the common speeds; the slider in settings
+  // covers everything in between.
+  const SPEED_STEPS = [1, 1.25, 1.5, 2, 0.8];
+  function cycleRate() {
+    const current = state.settings.rate;
+    const index = SPEED_STEPS.findIndex((step) => Math.abs(step - current) < 0.001);
+    setRate(SPEED_STEPS[(index + 1) % SPEED_STEPS.length]);
+  }
+
+  function resetDefaults() {
+    const { showPill, ...playback } = DEFAULTS;
+    if (playback.voice !== state.settings.voice) changeVoice(playback.voice);
+    applyPrefs({ ...state.prefs, ...playback, follow: true });
+    savePrefs({ ...playback, follow: true });
+    saveStateDebounced();
+    setDock('bottom');
   }
 
   function setRate(rate) {

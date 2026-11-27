@@ -145,14 +145,15 @@ final class KernlStatGrid: NSView {
     }
 
     init(_ items: [(label: String, value: String, foot: String)],
-         minTileWidth: CGFloat = 136, tileHeight: CGFloat = 116, spacing: CGFloat = 12) {
+         minTileWidth: CGFloat = 136, tileHeight: CGFloat = 116, spacing: CGFloat = 12,
+         valueSize fixedSize: CGFloat? = nil) {
         self.spacing = spacing
         self.minTileWidth = minTileWidth
         self.tileHeight = tileHeight
         // One value size per row, set by the longest value, so the strip reads evenly.
         let count = items.map { $0.value.count }.max() ?? 0
         self.cards = items.map { item in
-            let valueSize: CGFloat = count <= 5 ? 29 : (count <= 8 ? 24 : (count <= 10 ? 19 : 17))
+            let valueSize: CGFloat = fixedSize ?? (count <= 5 ? 29 : (count <= 8 ? 24 : (count <= 10 ? 19 : 17)))
             let value = fleetLabel(item.value, size: valueSize, weight: .medium, color: KernlTheme.ink, lines: 1)
             value.cell?.lineBreakMode = .byTruncatingTail
             let label = fleetLabel(item.label, size: 11, weight: .medium, color: KernlTheme.muted, lines: 1)
@@ -340,6 +341,44 @@ final class KernlButton: NSButton {
 func fleetButton(_ title: String, primary: Bool = false,
                  target: AnyObject?, action: Selector) -> NSButton {
     KernlButton(title, style: primary ? .primary : .secondary, target: target, action: action)
+}
+
+/// A quiet "‹ Back" link for detail pages. Esc goes back too.
+final class KernlBackButton: NSButton {
+    private var hovering = false { didSet { refresh() } }
+    init(target: AnyObject?, action: Selector) {
+        super.init(frame: .zero)
+        self.target = target
+        self.action = action
+        isBordered = false
+        bezelStyle = .regularSquare
+        imagePosition = .imageLeading
+        imageHugsTitle = true
+        image = NSImage(systemSymbolName: "chevron.left", accessibilityDescription: "Back")?
+            .withSymbolConfiguration(.init(pointSize: 12, weight: .semibold))
+        keyEquivalent = "\u{1b}"
+        setAccessibilityLabel("Back")
+        translatesAutoresizingMaskIntoConstraints = false
+        refresh()
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    private func refresh() {
+        let color = hovering ? KernlTheme.ink : KernlTheme.muted
+        contentTintColor = color
+        attributedTitle = NSAttributedString(string: " Back", attributes: [
+            .font: Type.sans(13, .medium), .foregroundColor: color
+        ])
+    }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+    override func mouseEntered(with event: NSEvent) { hovering = true }
+    override func mouseExited(with event: NSEvent) { hovering = false }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); refresh() }
 }
 
 func fleetSwitch(isOn: Bool, target: AnyObject?, action: Selector) -> NSSwitch {
