@@ -14,6 +14,8 @@ final class GlobalHotkey {
     private var carbonRef: EventHotKeyRef?
     private var carbonHandler: EventHandlerRef?
     private var enabled = true
+    private static var nextID: UInt32 = 1
+    fileprivate let carbonID: UInt32 = { defer { GlobalHotkey.nextID += 1 }; return GlobalHotkey.nextID }()
 
     init(keyCode: UInt32, modifiers: UInt32, callback: @escaping () -> Void) {
         self.keyCode = keyCode
@@ -62,6 +64,9 @@ final class GlobalHotkey {
         let flags = event.flags
         guard flags.contains(.maskAlternate) else { return false }
         guard !flags.contains(.maskCommand), !flags.contains(.maskControl) else { return false }
+        // ⌥L and ⌥⇧L are different shortcuts, so Shift has to match exactly.
+        let wantsShift = carbonModifiers & UInt32(shiftKey) != 0
+        guard flags.contains(.maskShift) == wantsShift else { return false }
         return true
     }
 
@@ -84,13 +89,18 @@ final class GlobalHotkey {
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
                                       eventKind: UInt32(kEventHotKeyPressed))
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, userData in
-            guard let userData else { return noErr }
-            Unmanaged<GlobalHotkey>.fromOpaque(userData)
-                .takeUnretainedValue().callback()
+        InstallEventHandler(GetApplicationEventTarget(), { _, event, userData in
+            guard let userData, let event else { return noErr }
+            let hotkey = Unmanaged<GlobalHotkey>.fromOpaque(userData).takeUnretainedValue()
+            // Every registered hotkey reaches every handler; only answer our own.
+            var pressed = EventHotKeyID()
+            GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                              nil, MemoryLayout<EventHotKeyID>.size, nil, &pressed)
+            guard pressed.id == hotkey.carbonID else { return OSStatus(eventNotHandledErr) }
+            hotkey.callback()
             return noErr
         }, 1, &eventType, selfPtr, &carbonHandler)
-        let hotKeyID = EventHotKeyID(signature: OSType(0x4B524E4C), id: 1)
+        let hotKeyID = EventHotKeyID(signature: OSType(0x4B524E4C), id: carbonID)
         RegisterEventHotKey(keyCode, carbonModifiers, hotKeyID,
                             GetApplicationEventTarget(), 0, &carbonRef)
     }

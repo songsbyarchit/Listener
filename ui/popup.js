@@ -70,6 +70,42 @@ async function init() {
   bind();
   watchStorage();
   checkServer();
+  loadLater();
+}
+
+// The newest clips saved for later. Clicking one opens the page it came from.
+async function loadLater() {
+  const section = document.getElementById('later');
+  const list = document.getElementById('later-list');
+  let clips = [];
+  try {
+    const result = await chrome.runtime.sendMessage({ type: 'listnr:list-clips' });
+    clips = (result?.clips || []).filter((clip) => !clip.done);
+  } catch {
+    clips = [];
+  }
+  section.hidden = clips.length === 0;
+  list.replaceChildren();
+  for (const clip of clips.slice(0, 5)) {
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    const title = document.createElement('span');
+    title.className = 'later-title';
+    title.textContent = clip.title || 'Untitled';
+    const meta = document.createElement('span');
+    meta.className = 'later-meta';
+    const minutes = Math.max(1, Math.round((clip.words || 0) / 230));
+    meta.textContent = `${clip.kind === 'selection' ? 'Selection' : 'Article'}, ${minutes} min${clip.site ? `, ${clip.site}` : ''}`;
+    button.append(title, meta);
+    if (/^https?:/.test(clip.url || '')) {
+      button.addEventListener('click', () => chrome.tabs.create({ url: clip.url }));
+    } else {
+      button.disabled = true;
+    }
+    item.append(button);
+    list.append(item);
+  }
 }
 
 function normalizePrefs(value) {

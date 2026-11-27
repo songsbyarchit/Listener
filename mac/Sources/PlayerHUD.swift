@@ -19,6 +19,7 @@ final class PlayerHUD: NSPanel {
     private let expandButton = NSButton()
     private let closeButton = NSButton()
     private let muteButton = NSButton()
+    private let clipButton = NSButton()
 
     private let status = NSTextField(labelWithString: "")
     private let lineField = NSTextField(wrappingLabelWithString: "")
@@ -68,6 +69,8 @@ final class PlayerHUD: NSPanel {
     var onMute: (() -> Bool)?
     /// Opens listnr settings.
     var onSettings: (() -> Void)?
+    /// Stop the voice and open the clip preview, to read it or save it for later.
+    var onClip: (() -> Void)?
     /// The current speed, for the button label.
     var speedProvider: (() -> Float)?
     /// Asked on every tick for the playback position.
@@ -115,7 +118,8 @@ final class PlayerHUD: NSPanel {
         configureQuiet(expandButton, symbol: "arrow.up.left.and.arrow.down.right", label: "Bigger player", action: #selector(expandTapped))
         configureQuiet(closeButton, symbol: "xmark", label: "Stop and close", action: #selector(closeTapped))
         configureQuiet(muteButton, symbol: "speaker.wave.2", label: "Mute", action: #selector(muteTapped))
-        let tools = fleetHStack([muteButton, settingsButton, expandButton, closeButton], spacing: 2)
+        configureQuiet(clipButton, symbol: "bookmark", label: "Clip for later (⌥⇧L)", action: #selector(clipTapped))
+        let tools = fleetHStack([clipButton, muteButton, settingsButton, expandButton, closeButton], spacing: 2)
         let header = fleetHStack([mark, name, status, fleetSpacer(), tools], spacing: 7)
         header.setCustomSpacing(10, after: name)
 
@@ -406,6 +410,7 @@ final class PlayerHUD: NSPanel {
 
     @objc private func pauseTapped() { onPause?() }
     @objc private func settingsTapped() { onSettings?() }
+    @objc private func clipTapped() { onClip?() }
 
     @objc private func muteTapped() {
         let muted = onMute?() ?? false

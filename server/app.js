@@ -787,6 +787,72 @@ export function createApp({ config = loadConfig(), db, fetchImpl, ttsFetchImpl, 
     response.json({ ok: true, appearance: value });
   });
 
+  // Clips: things saved to read or listen to later. One small JSON file in the
+  // data folder, so the Chrome extension and the Mac app share one collection.
+  const clipsPath = path.join(config.dataDir, 'clips.json');
+  const readClips = async () => {
+    const raw = await fs.promises.readFile(clipsPath, 'utf8').catch(() => '[]');
+    try {
+      const list = JSON.parse(raw);
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  };
+  const writeClips = async (list) => {
+    await fs.promises.mkdir(path.dirname(clipsPath), { recursive: true });
+    await fs.promises.writeFile(clipsPath, JSON.stringify(list.slice(0, 1000), null, 2), { mode: 0o600 });
+  };
+
+  app.get('/api/clips', async (_request, response) => {
+    response.json({ ok: true, clips: await readClips() });
+  });
+
+  app.post('/api/clips', async (request, response) => {
+    const body = request.body || {};
+    const text = String(body.text || '').trim();
+    if (!text) {
+      response.status(400).json(errorBody(badRequest('A clip needs some text.')));
+      return;
+    }
+    const url = String(body.url || '').slice(0, 2000);
+    const kind = body.kind === 'selection' ? 'selection' : 'article';
+    const list = await readClips();
+    // Clipping the same article again replaces the old copy instead of adding a second one.
+    const kept = list.filter((clip) => !(kind === 'article' && clip.kind === 'article' && url && clip.url === url));
+    const clip = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      title: String(body.title || 'Untitled').slice(0, 300),
+      url,
+      site: String(body.site || '').slice(0, 120),
+      kind,
+      text: text.slice(0, 400000),
+      words: text.split(/\s+/).filter(Boolean).length,
+      done: false
+    };
+    await writeClips([clip, ...kept]);
+    response.json({ ok: true, clip });
+  });
+
+  app.patch('/api/clips/:id', async (request, response) => {
+    const list = await readClips();
+    const clip = list.find((item) => item.id === request.params.id);
+    if (!clip) {
+      response.status(404).json(errorBody(notFound('Clip not found.')));
+      return;
+    }
+    if (typeof request.body?.done === 'boolean') clip.done = request.body.done;
+    await writeClips(list);
+    response.json({ ok: true, clip });
+  });
+
+  app.delete('/api/clips/:id', async (request, response) => {
+    const list = await readClips();
+    await writeClips(list.filter((item) => item.id !== request.params.id));
+    response.json({ ok: true });
+  });
+
   app.use('/api', (_request, _response, next) => {
     next(notFound('API route not found.'));
   });

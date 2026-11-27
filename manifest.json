@@ -38,6 +38,13 @@
         "mac": "Alt+L"
       },
       "description": "Read the current page with listnr"
+    },
+    "clip-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+L",
+        "mac": "Alt+Shift+L"
+      },
+      "description": "Clip the current page or selection for later with listnr"
     }
   },
   "action": {

@@ -6,10 +6,13 @@ import Carbon
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var hotkey: GlobalHotkey?
+    private var clipHotkey: GlobalHotkey?
+    private let clipPanel = ClipPanel()
     private var speaker: Speaker!
     private var hud: PlayerHUD!
     private var homeWindow: ListnrHomeWindowController!
     private var lastText = ""
+    private var lastSource = ""
     private var appearanceItems: [NSMenuItem] = []
     private var pauseItem: NSMenuItem!
 
@@ -38,6 +41,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hud.onSpeed = { [weak self] in self?.speaker.cycleRate() ?? 1 }
         hud.speedProvider = { [weak self] in self?.speaker.rate ?? 1 }
         hud.onSettings = { [weak self] in self?.openSettings() }
+        // The bookmark in the player: stop the voice and show the text to read or save.
+        hud.onClip = { [weak self] in
+            guard let self else { return }
+            self.speaker.stop()
+            self.clipPanel.preview(text: self.lastText, title: Self.clipTitle(self.lastText),
+                                   source: self.lastSource)
+        }
+        clipPanel.onListen = { [weak self] text in self?.speak(text, source: "clip") }
+        homeWindow.onListen = { [weak self] text in self?.speak(text, source: "clip") }
+        homeWindow.onOpenClip = { [weak self] clip in self?.clipPanel.open(clip) }
         hud.onMute = { [weak self] in
             guard let self else { return false }
             self.speaker.muted.toggle()
@@ -52,7 +65,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey = GlobalHotkey(keyCode: 37, modifiers: UInt32(optionKey)) { [weak self] in
             self?.readSelection()
         }
+        clipHotkey = GlobalHotkey(keyCode: 37, modifiers: UInt32(optionKey | shiftKey)) { [weak self] in
+            self?.clipSelection()
+        }
         updateHotkeyForFrontmost()
+        ClipStore.shared.refresh()
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
@@ -73,6 +90,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else if CommandLine.arguments.contains("--test-voice") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in self?.testVoice() }
+        } else if CommandLine.arguments.contains("--later") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.openLater() }
         } else if CommandLine.arguments.contains("--open-main") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.openWindow()
@@ -91,6 +110,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(item("Settings…", #selector(openSettings)))
         menu.addItem(item("Read selection  ⌥L", #selector(readSelection)))
         menu.addItem(item("Read clipboard", #selector(readClipboard)))
+        menu.addItem(item("Clip for later  ⌥⇧L", #selector(clipSelection)))
+        menu.addItem(item("Later…", #selector(openLater)))
         pauseItem = item("Pause", #selector(togglePause))
         menu.addItem(pauseItem)
         menu.addItem(item("Stop", #selector(stop)))
@@ -131,6 +152,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let chrome = NSWorkspace.shared.frontmostApplication?.bundleIdentifier?
             .lowercased().contains("chrome") ?? false
         hotkey?.setEnabled(!chrome)
+        clipHotkey?.setEnabled(!chrome)
+        if !chrome { lastSource = NSWorkspace.shared.frontmostApplication?.localizedName ?? lastSource }
+    }
+
+    /// ⌥⇧L: show the selection, or the visible text, in full so you can read it
+    /// now or save it to Later, without the voice starting.
+    @objc private func clipSelection() {
+        let app = NSWorkspace.shared.frontmostApplication?.localizedName ?? ""
+        var text = SelectionReader.selectedText() ?? ""
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            guard AXIsProcessTrusted() else {
+                hud.showError("Grant Accessibility to listnr, then try again.")
+                return
+            }
+            text = SelectionReader.fallbackText() ?? ""
+        }
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            hud.showError("Select some text first, then press ⌥⇧L.")
+            return
+        }
+        clipPanel.preview(text: text, title: Self.clipTitle(text), source: app)
+    }
+
+    /// The first line, or its first few words, makes a good enough title.
+    static func clipTitle(_ text: String) -> String {
+        let first = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? text
+        let words = first.split(whereSeparator: { $0.isWhitespace })
+        return words.count > 10 ? words.prefix(10).joined(separator: " ") + "…" : words.joined(separator: " ")
     }
 
     @objc private func readSelection() {
@@ -217,6 +266,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         homeWindow.show()
         statusItem.button?.image = MenuBarMark.image
         statusItem.button?.image?.isTemplate = true
+    }
+
+    @objc private func openLater() {
+        homeWindow.show(section: 2)
     }
 
     @objc private func openSettings() {

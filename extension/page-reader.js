@@ -46,6 +46,7 @@
     next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>',
     stop: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7.5h7.5M18.5 7.5H20M4 16.5h2M10.5 16.5H20"/><circle cx="15" cy="7.5" r="2.6"/><circle cx="7.6" cy="16.5" r="2.6"/></svg>',
+    clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M7 4.5h10a1 1 0 0 1 1 1V20l-6-3.8L6 20V5.5a1 1 0 0 1 1-1Z"/></svg>',
     minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>',
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>'
   };
@@ -498,6 +499,51 @@
   font: 500 12px/1.4 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .lnr-panel-toast[hidden] { display: none; }
+
+/* Clip: preview the article, then save it, or just the selection, for later */
+.lnr-panel.is-clipping .lnr-body,
+.lnr-panel.is-clipping .lnr-controls,
+.lnr-panel.is-clipping .lnr-settings,
+.lnr-panel.is-clipping .lnr-progress { display: none; }
+.lnr-clip { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.lnr-clip[hidden] { display: none; }
+.lnr-clip-scope {
+  display: flex; gap: 4px; margin: 10px 10px 0; padding: 3px;
+  border: 1px solid var(--lnr-line); border-radius: 10px;
+}
+.lnr-clip-scope[hidden] { display: none; }
+.lnr-clip-scope button {
+  flex: 1; border: 0; border-radius: 7px; padding: 7px 8px; cursor: pointer;
+  background: transparent; color: var(--lnr-muted);
+  font: 500 12.5px/1.2 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.lnr-clip-scope button[aria-pressed="true"] { background: var(--lnr-hover); color: var(--lnr-ink); }
+.lnr-clip-preview {
+  margin: 10px 10px 0; padding: 18px 18px 22px;
+  border: 1px solid var(--lnr-line); border-radius: 16px;
+  background: var(--lnr-tile); overflow-y: auto; min-height: 160px; max-height: 52vh; flex: 1 1 auto;
+  font: 400 14px/1.6 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--lnr-ink);
+  scrollbar-width: thin; scrollbar-color: var(--lnr-line) transparent;
+}
+.lnr-clip-preview h3 { margin: 0 0 4px; font-size: 18px; font-weight: 650; line-height: 1.25; letter-spacing: -.015em; }
+.lnr-clip-preview .lnr-clip-source { margin: 0 0 14px; color: var(--lnr-faint); font-size: 12px; }
+.lnr-clip-preview h4 { margin: 16px 0 6px; font-size: 14.5px; font-weight: 650; }
+.lnr-clip-preview p { margin: 0 0 10px; }
+.lnr-clip-preview .is-out { color: var(--lnr-faint); }
+.lnr-clip-preview mark { background: var(--lnr-accent-soft); color: inherit; border-radius: 3px; padding: 0 1px; }
+.lnr-clip-foot {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px 12px;
+}
+.lnr-clip-count { flex: 1; color: var(--lnr-muted); font: 400 12px/1.3 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
+.lnr-clip-foot button {
+  border-radius: 999px; padding: 8px 14px; cursor: pointer;
+  font: 600 12.5px/1 "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.lnr-clip-back { border: 1px solid var(--lnr-line); background: transparent; color: var(--lnr-ink); }
+.lnr-clip-save { border: 1px solid var(--lnr-ink); background: var(--lnr-ink); color: var(--lnr-bg); }
+.lnr-clip-save:disabled { opacity: .55; cursor: default; }
+.lnr-clip-btn[aria-pressed="true"] { color: var(--lnr-ink); background: var(--lnr-hover); }
 
 /* Resize handles: sides change one axis, corners change both */
 .lnr-resize { position: absolute; z-index: 3; touch-action: none; }
@@ -1318,6 +1364,7 @@
               <span>listnr</span>
             </div>
             <div class="lnr-head-actions">
+              <button class="lnr-icon lnr-clip-btn" type="button" title="Clip for later: preview the article, then save it to read or listen to later" aria-label="Clip for later" aria-pressed="false">${ICON.clip}</button>
               <button class="lnr-icon lnr-min" type="button" title="Minimize player" aria-label="Minimize player">${ICON.minus}</button>
             </div>
           </header>
@@ -1328,6 +1375,18 @@
             <div class="lnr-meta">
               <span class="lnr-position"></span>
               <span class="lnr-time"></span>
+            </div>
+          </div>
+          <div class="lnr-clip" hidden>
+            <div class="lnr-clip-scope" role="group" aria-label="What to clip" hidden>
+              <button type="button" data-scope="selection" aria-pressed="true">Your selection</button>
+              <button type="button" data-scope="article" aria-pressed="false">Whole article</button>
+            </div>
+            <div class="lnr-clip-preview" tabindex="0" aria-label="Clip preview"></div>
+            <div class="lnr-clip-foot">
+              <span class="lnr-clip-count"></span>
+              <button class="lnr-clip-back" type="button">Back to player</button>
+              <button class="lnr-clip-save" type="button">Save for later</button>
             </div>
           </div>
           <div class="lnr-controls">
@@ -1403,6 +1462,14 @@
       dockButtons: [...shadow.querySelectorAll('.lnr-dock button')],
       panelToast: shadow.querySelector('.lnr-panel-toast'),
       minimize: shadow.querySelector('.lnr-min'),
+      clipBtn: shadow.querySelector('.lnr-clip-btn'),
+      clip: shadow.querySelector('.lnr-clip'),
+      clipScope: shadow.querySelector('.lnr-clip-scope'),
+      clipScopeButtons: [...shadow.querySelectorAll('.lnr-clip-scope button')],
+      clipPreview: shadow.querySelector('.lnr-clip-preview'),
+      clipCount: shadow.querySelector('.lnr-clip-count'),
+      clipBack: shadow.querySelector('.lnr-clip-back'),
+      clipSave: shadow.querySelector('.lnr-clip-save'),
       reset: shadow.querySelector('.lnr-reset')
     };
 
@@ -1440,6 +1507,17 @@
     }
     refs.close.addEventListener('click', closeExtension);
     refs.minimize.addEventListener('click', minimizePanel);
+    // Grab the page selection before the click can clear it.
+    refs.clipBtn.addEventListener('pointerdown', () => rememberSelection());
+    refs.clipBtn.addEventListener('click', () => (state.clipping ? closeClip() : openClip()));
+    refs.clipBack.addEventListener('click', closeClip);
+    refs.clipSave.addEventListener('click', saveClip);
+    for (const button of refs.clipScopeButtons) {
+      button.addEventListener('click', () => {
+        state.clipScope = button.dataset.scope;
+        renderClip();
+      });
+    }
     refs.play.addEventListener('click', togglePlay);
     refs.prev.addEventListener('click', () => skip(-1));
     refs.next.addEventListener('click', () => skip(1));
@@ -1515,7 +1593,16 @@
     });
 
     chrome.runtime.onMessage.addListener((message) => {
+      if (message?.type === 'listnr:clip-page') {
+        // Option Shift L: skip the voice and go straight to the clip preview.
+        rememberSelection({ fresh: true });
+        ensureUI();
+        if (state.doc) openClip();
+        else startImport({ clip: true });
+        return;
+      }
       if (message?.type === 'listnr:listen-page') {
+        rememberSelection({ fresh: true });
         // Option L opens the player and starts reading straight away; pressed
         // again while reading, it pauses.
         ensureUI();
@@ -1529,7 +1616,7 @@
     });
   }
 
-  async function startImport({ play = false } = {}) {
+  async function startImport({ play = false, clip = false } = {}) {
     if (state.importing) return;
     if (state.doc) {
       showPanel();
@@ -1566,7 +1653,8 @@
       setPillLoading(false);
       showPanel();
       loadVoices();
-      if (play && state.playback !== 'playing' && state.playback !== 'loading') togglePlay();
+      if (clip) openClip();
+      else if (play && state.playback !== 'playing' && state.playback !== 'loading') togglePlay();
     } catch (error) {
       state.importing = false;
       setPillLoading(false);
@@ -2320,6 +2408,145 @@
   /* ------------------------------------------------------------------ */
   /* Capture and state saving                                           */
   /* ------------------------------------------------------------------ */
+
+  // ---- Clip for later ----
+
+  // A fresh press of the shortcut takes the current selection, or none; the clip
+  // button only adds one, because clicking it may already have cleared the page's.
+  function rememberSelection({ fresh = false } = {}) {
+    const text = String(window.getSelection?.()?.toString() || '').replace(/\s+/g, ' ').trim();
+    if (text.split(' ').length >= 3) state.clipSelection = text;
+    else if (fresh) state.clipSelection = '';
+  }
+
+  function clipWords(text) {
+    return text.split(/\s+/).filter(Boolean).length;
+  }
+
+  function inSelection(sentence) {
+    const selection = normalizeForSearch(state.clipSelection || '').toLowerCase();
+    const said = normalizeForSearch(sentence).toLowerCase();
+    if (!selection || !said) return false;
+    return selection.includes(said) || (selection.length > 24 && said.includes(selection));
+  }
+
+  function openClip() {
+    if (!state.doc) return;
+    if (state.playback === 'playing' || state.playback === 'loading') pausePlayback();
+    state.clipping = true;
+    state.clipSaved = false;
+    state.clipScope = state.clipSelection ? 'selection' : 'article';
+    showPanel();
+    refs.panel.classList.add('is-clipping');
+    refs.clip.hidden = false;
+    refs.clipBtn.setAttribute('aria-pressed', 'true');
+    renderClip();
+    refs.clipPreview.focus({ preventScroll: true });
+  }
+
+  function closeClip() {
+    state.clipping = false;
+    refs.panel.classList.remove('is-clipping');
+    refs.clip.hidden = true;
+    refs.clipBtn.setAttribute('aria-pressed', 'false');
+    applyPanelLayout();
+  }
+
+  // The preview shows the whole article as listnr cleaned it. With a selection,
+  // the selected sentences are marked and the rest is dimmed, so you can see the
+  // part you picked in context before saving it.
+  function renderClip() {
+    const doc = state.doc;
+    const hasSelection = Boolean(state.clipSelection);
+    const scope = hasSelection ? state.clipScope : 'article';
+    refs.clipScope.hidden = !hasSelection;
+    for (const button of refs.clipScopeButtons) {
+      button.setAttribute('aria-pressed', String(button.dataset.scope === scope));
+    }
+    const preview = refs.clipPreview;
+    preview.replaceChildren();
+    const heading = document.createElement('h3');
+    heading.textContent = doc.title || document.title || 'Web page';
+    const source = document.createElement('p');
+    source.className = 'lnr-clip-source';
+    source.textContent = location.hostname.replace(/^www\./, '');
+    preview.append(heading, source);
+
+    let firstMark = null;
+    let matched = 0;
+    for (const chapter of doc.content?.chapters || []) {
+      for (const paragraph of chapter.paragraphs || []) {
+        const block = document.createElement(/^h[1-6]$/.test(paragraph.kind || '') ? 'h4' : 'p');
+        for (const sentence of paragraph.sentences || []) {
+          const hit = scope === 'selection' && inSelection(sentence.text);
+          const node = hit ? document.createElement('mark') : document.createElement('span');
+          if (scope === 'selection' && !hit) node.className = 'is-out';
+          node.textContent = sentence.text + ' ';
+          if (hit) {
+            matched += 1;
+            firstMark = firstMark || node;
+          }
+          block.append(node);
+        }
+        preview.append(block);
+      }
+    }
+
+    const text = clipText();
+    const words = clipWords(text);
+    const minutes = Math.max(1, Math.round(words / 230));
+    refs.clipCount.textContent = `${words.toLocaleString()} words, about ${minutes} min to read`;
+    refs.clipSave.disabled = state.clipSaved;
+    refs.clipSave.textContent = state.clipSaved ? 'Saved' : 'Save for later';
+    if (scope === 'selection' && !matched) {
+      // The selection was outside the cleaned article, such as a caption: show it on its own.
+      const quote = document.createElement('p');
+      const mark = document.createElement('mark');
+      mark.textContent = state.clipSelection;
+      quote.append(mark);
+      preview.insertBefore(quote, preview.children[2] || null);
+      firstMark = mark;
+    }
+    if (firstMark) requestAnimationFrame(() => firstMark.scrollIntoView({ block: 'center' }));
+    else preview.scrollTop = 0;
+  }
+
+  function clipText() {
+    if (state.clipSelection && state.clipScope === 'selection') return state.clipSelection;
+    const lines = [];
+    for (const chapter of state.doc?.content?.chapters || []) {
+      for (const paragraph of chapter.paragraphs || []) {
+        lines.push((paragraph.sentences || []).map((sentence) => sentence.text).join(' '));
+      }
+    }
+    return lines.filter(Boolean).join('\n\n');
+  }
+
+  async function saveClip() {
+    if (state.clipSaved) return;
+    refs.clipSave.disabled = true;
+    refs.clipSave.textContent = 'Saving';
+    const kind = state.clipSelection && state.clipScope === 'selection' ? 'selection' : 'article';
+    const result = await sendMessage({
+      type: 'listnr:save-clip',
+      clip: {
+        title: state.doc?.title || document.title,
+        url: location.href,
+        site: location.hostname.replace(/^www\./, ''),
+        kind,
+        text: clipText()
+      }
+    });
+    if (result?.ok) {
+      state.clipSaved = true;
+      refs.clipSave.textContent = 'Saved';
+      showPanelToast('Saved to Later. Find it in the listnr app or the toolbar popup.', 3500);
+    } else {
+      refs.clipSave.disabled = false;
+      refs.clipSave.textContent = 'Save for later';
+      showPanelToast(result?.error || 'Could not save the clip.', 6000);
+    }
+  }
 
   function collectPage() {
     const clone = document.documentElement.cloneNode(true);

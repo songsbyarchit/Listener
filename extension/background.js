@@ -151,6 +151,40 @@ async function saveKernlAppearance(value) {
   }
 }
 
+// Clips: save the article or the selection to read or listen to later.
+async function saveClip(message) {
+  const clip = message.clip || {};
+  try {
+    const response = await fetch(`${SERVER_URL}/api/clips`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: clip.title,
+        url: clip.url,
+        site: clip.site,
+        kind: clip.kind,
+        text: clip.text
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, error: payload?.error?.message || 'Could not save the clip.' };
+    return { ok: true, clip: payload.clip };
+  } catch {
+    return { ok: false, error: 'listnr is not running, so the clip was not saved. Start listnr and try again.' };
+  }
+}
+
+async function listClips() {
+  try {
+    const response = await fetch(`${SERVER_URL}/api/clips`, { signal: AbortSignal.timeout(5000) });
+    const payload = await response.json().catch(() => null);
+    return { ok: response.ok, clips: payload?.clips || [] };
+  } catch {
+    return { ok: false, clips: [] };
+  }
+}
+
 async function savePageState(message) {
   const docId = String(message.docId || '');
   if (!/^[a-f0-9-]{8,}$/i.test(docId)) return { ok: false, error: 'Invalid document.' };
@@ -173,9 +207,9 @@ async function savePageState(message) {
   }
 }
 
-async function readPageInTab(tabId) {
+async function readPageInTab(tabId, type = 'listnr:listen-page') {
   try {
-    await chrome.tabs.sendMessage(tabId, { type: 'listnr:listen-page' });
+    await chrome.tabs.sendMessage(tabId, { type });
     return { ok: true };
   } catch {
     // The tab was loaded before the extension/content script; inject once.
@@ -186,7 +220,7 @@ async function readPageInTab(tabId) {
       target: { tabId },
       files: ['extension/page-reader.js']
     });
-    await chrome.tabs.sendMessage(tabId, { type: 'listnr:listen-page' });
+    await chrome.tabs.sendMessage(tabId, { type });
     return { ok: true };
   } catch {
     // Restricted page (chrome://, Web Store, PDF viewer, etc.).
@@ -254,6 +288,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'listnr:save-clip') {
+    saveClip(message).then(sendResponse);
+    return true;
+  }
+
+  if (message.type === 'listnr:list-clips') {
+    listClips().then(sendResponse);
+    return true;
+  }
+
   if (message.type === 'listnr:read-page') {
     readActivePage()
       .then(sendResponse)
@@ -267,7 +311,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command !== 'read-page') return;
+  if (command !== 'read-page' && command !== 'clip-page') return;
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  if (tab?.id != null) await readPageInTab(tab.id);
+  if (tab?.id != null) await readPageInTab(tab.id, command === 'clip-page' ? 'listnr:clip-page' : 'listnr:listen-page');
 });
