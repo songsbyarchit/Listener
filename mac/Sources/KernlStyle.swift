@@ -951,3 +951,27 @@ final class KernlScroller: NSScroller {
         scroll.scrollerInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: -14)
     }
 }
+
+
+/// The one text box style in every app: a borderless field centred in a
+/// rounded outline, the same height as the buttons beside it.
+func fleetInputBox(_ field: NSTextField, height: CGFloat = 36) -> NSView {
+    field.isBordered = false
+    field.drawsBackground = false
+    field.focusRingType = .none
+    field.translatesAutoresizingMaskIntoConstraints = false
+    let box = NSView()
+    box.translatesAutoresizingMaskIntoConstraints = false
+    box.wantsLayer = true
+    box.layer?.cornerRadius = 10
+    box.layer?.borderWidth = 1
+    box.layer?.borderColor = KernlTheme.lineStrong.cgColor
+    box.addSubview(field)
+    NSLayoutConstraint.activate([
+        box.heightAnchor.constraint(equalToConstant: (height * Type.scale).rounded()),
+        field.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 12),
+        field.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -12),
+        field.centerYAnchor.constraint(equalTo: box.centerYAnchor)
+    ])
+    return box
+}

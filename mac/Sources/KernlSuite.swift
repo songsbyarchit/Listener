@@ -322,7 +322,7 @@ final class KernlBarRow: NSView {
 }
 
 private func barCard(_ title: String, _ rows: [(String, Int)], tint: NSColor, empty: String,
-                     format: (Int) -> String = { "\($0)" }) -> NSView {
+                     format: (Int) -> String = { KernlNumber.grouped($0) }) -> NSView {
     let top = Double(rows.first?.1 ?? 1)
     var views: [NSView] = [fleetLabel(title, size: 15, weight: .medium, color: KernlTheme.ink, lines: 1)]
     if rows.isEmpty {
@@ -359,7 +359,10 @@ final class KernlHistoryPage: NSView {
         let sorts = KernlPillChoice(["Newest", "Longest", "Costliest"], selected: 0) { [weak self] in
             self?.sort = $0; self?.reload()
         }
-        let controls = fleetHStack([search, fleetSpacer(), sorts, ranges], spacing: 12)
+        // Search on its own line, then sort and range, so the bar fits at any text size.
+        let controls = fleetVStack([search, fleetHStack([sorts, fleetSpacer(), ranges], spacing: 12)], spacing: 10)
+        search.widthAnchor.constraint(equalTo: controls.widthAnchor).isActive = true
+        controls.arrangedSubviews.last?.widthAnchor.constraint(equalTo: controls.widthAnchor).isActive = true
         body.orientation = .vertical
         body.alignment = .leading
         body.spacing = 18
@@ -389,7 +392,7 @@ final class KernlHistoryPage: NSView {
         default: items.sort { $0.date > $1.date }
         }
         let total = items.reduce(0) { $0 + $1.cost }
-        let summary = fleetLabel("\(items.count) item\(items.count == 1 ? "" : "s")  ·  \(items.reduce(0) { $0 + $1.words }) words  ·  \(KernlSuitePages.money(total))",
+        let summary = fleetLabel("\(items.count) item\(items.count == 1 ? "" : "s")  ·  \(KernlNumber.grouped(items.reduce(0) { $0 + $1.words })) words  ·  \(KernlSuitePages.money(total))",
                                  size: 12, color: KernlTheme.muted, lines: 1)
         body.addArrangedSubview(summary)
         if items.isEmpty {
@@ -492,8 +495,8 @@ final class KernlProfilePage: NSView {
             .map { ($0.key, $0.value.count) }.sorted { $0.1 > $1.1 }
         let busiest = places.first?.0 ?? "None yet"
         add(KernlStatGrid([
-            (label: apps.count > 1 ? "items" : "uses", value: "\(items.count)", foot: range == .all ? "all time" : "last \(range.title)"),
-            (label: "words", value: "\(words)", foot: items.isEmpty ? "" : "\(words / max(1, items.count)) on average"),
+            (label: apps.count > 1 ? "items" : "uses", value: KernlNumber.grouped(items.count), foot: range == .all ? "all time" : "last \(range.title)"),
+            (label: "words", value: KernlNumber.grouped(words), foot: items.isEmpty ? "" : "\(KernlNumber.grouped(words / max(1, items.count))) on average"),
             (label: "most used in", value: busiest, foot: places.first.map { "\($0.1) times" } ?? ""),
             (label: "cost", value: KernlSuitePages.money(items.reduce(0) { $0 + $1.cost }), foot: "this range")
         ], minTileWidth: 150, tileHeight: 104, valueSize: 22))
@@ -521,7 +524,7 @@ final class KernlSuiteCompare: NSView {
         func rows(_ list: [(String, Int)]) -> [NSView] {
             let top = Double(list.first?.1 ?? 1)
             return list.map { entry in
-                return KernlBarRow(label: entry.0, value: "\(entry.1)", fraction: Double(entry.1) / max(1, top),
+                return KernlBarRow(label: entry.0, value: KernlNumber.grouped(entry.1), fraction: Double(entry.1) / max(1, top),
                                    tint: KernlTheme.ink)
             }
         }
@@ -905,12 +908,10 @@ final class KernlAskedRow: NSView {
         } else {
             field.placeholderString = "Write the answer"
             field.font = Type.sans(13)
-            field.bezelStyle = .roundedBezel
             field.target = self
             field.action = #selector(save)
-            field.translatesAutoresizingMaskIntoConstraints = false
             let save = fleetButton("Add to FAQ", target: self, action: #selector(save))
-            views.append(fleetHStack([field, save], spacing: 8))
+            views.append(fleetHStack([fleetInputBox(field, height: 32), save], spacing: 8))
         }
         let card = KernlCard(content: fleetVStack(views, spacing: 8))
         card.translatesAutoresizingMaskIntoConstraints = false
@@ -1376,4 +1377,16 @@ final class KernlFAQRow: NSView {
         answerBottom?.isActive = open
         chevron.image = NSImage(systemSymbolName: open ? "chevron.down" : "chevron.right", accessibilityDescription: nil)
     }
+}
+
+
+/// Counts with thousands separators, the same as speakr: 18,719 not 18719.
+enum KernlNumber {
+    private static let formatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.locale = Locale(identifier: "en_GB")
+        return f
+    }()
+    static func grouped(_ value: Int) -> String { formatter.string(from: NSNumber(value: value)) ?? "\(value)" }
 }
