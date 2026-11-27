@@ -11,13 +11,18 @@ final class ListnrHomeWindowController {
             appName: "listnr",
             tagline: "read anything, anywhere",
             mark: .listnr,
-            sections: ["Home", "Settings"],
+            sections: ["Home", "History", "Profile", "FAQ", "Settings", "Info"],
             pageBuilder: { _ in NSView() }
         )
         shell.pageBuilder = { [weak self] index in
             guard let self else { return NSView() }
             switch index {
-            case 1: return self.settingsPage()
+            case 1: return KernlHistoryPage(apps: [.listnr], subtitle: "Everything listnr read to you, newest first.")
+            case 2: return KernlProfilePage(apps: [.listnr], tint: KernlTheme.accent, title: "Profile",
+                                            subtitle: "What you listen to, and the words that come up.", extra: nil)
+            case 3: return KernlFAQPage(app: "listnr", subtitle: "How to use listnr, and anything you ask.")
+            case 4: return self.settingsPage()
+            case 5: return KernlInfoPage(app: "listnr")
             default: return self.homePage()
             }
         }
@@ -30,7 +35,7 @@ final class ListnrHomeWindowController {
 
     func show(section: Int = 0) { shell.show(section: section) }
     func showSettings() {
-        shell.show(section: 1)
+        shell.show(section: 4)
         ListnrVoiceCatalog.shared.refresh { [weak self] in
             guard let self, self.shell.window?.isVisible == true else { return }
             self.shell.reloadCurrent()
@@ -155,7 +160,7 @@ final class ListnrHomeWindowController {
         f.dateFormat = "d MMM · HH:mm"; return f
     }()
 
-    @objc private func openSettings() { shell.show(section: 1) }
+    @objc private func openSettings() { shell.show(section: 4) }
     @objc private func voiceChanged(_ sender: NSPopUpButton) {
         guard let id = sender.selectedItem?.representedObject as? String else { return }
         ListnrPreferences.shared.voiceID = id
@@ -263,7 +268,7 @@ final class ListnrHomeWindowController {
         ])
     }
 
-    @objc private func openSettingsFromDetail() { shell.show(section: 1) }
+    @objc private func openSettingsFromDetail() { shell.show(section: 4) }
     @objc private func openKeys() {
         NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".fleet", isDirectory: true)

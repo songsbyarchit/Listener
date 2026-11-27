@@ -271,9 +271,23 @@ final class KernlAppShell: NSWindowController, NSWindowDelegate {
             // The home window puts the app in the Dock and the app switcher
             // while it is open; closing it hides the app again (onClose).
             if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
+            followTextSize()
+            KernlAppearance.installTextSizeKeys()
             showWindow(nil)
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    private var scaleObserver: NSObjectProtocol?
+
+    /// Rebuilds the open page when the shared text size changes.
+    private func followTextSize() {
+        guard scaleObserver == nil else { return }
+        scaleObserver = NotificationCenter.default.addObserver(forName: KernlAppearance.textScaleChanged,
+                                                               object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.window?.isVisible == true else { return }
+            self.reloadCurrent()
         }
     }
 

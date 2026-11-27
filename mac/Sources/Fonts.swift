@@ -35,7 +35,11 @@ enum Type {
         case regular, medium, semibold, bold
     }
 
+    /// The shared text size from ~/.fleet/textsize, applied to every font.
+    static var scale: CGFloat = 1
+
     static func sans(_ size: CGFloat, _ weight: Weight = .regular) -> NSFont {
+        let size = scale == 1 ? size : (size * scale).rounded()
         let name: String
         switch weight {
         case .medium: name = "InstrumentSans-Regular_Medium"
