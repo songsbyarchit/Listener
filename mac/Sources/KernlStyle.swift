@@ -323,7 +323,9 @@ final class KernlButton: NSButton {
         guard let layer else { return }
         switch style {
         case .primary:
-            layer.backgroundColor = (hovering ? KernlTheme.accent.blended(withFraction: 0.08, of: .black) ?? KernlTheme.accent : KernlTheme.accent).cgColor
+            // Filled buttons are ink, not accent: the accent stays for hover
+            // outlines and small marks, so colour never shouts.
+            layer.backgroundColor = (hovering ? KernlTheme.ink.withAlphaComponent(0.86) : KernlTheme.ink).cgColor
             layer.borderWidth = 0
         case .secondary:
             let selected = state == .on

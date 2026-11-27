@@ -18,7 +18,7 @@ final class ListnrHomeWindowController {
             guard let self else { return NSView() }
             switch index {
             case 1: return KernlHistoryPage(apps: [.listnr], subtitle: "Everything listnr read to you, newest first.")
-            case 2: return KernlProfilePage(apps: [.listnr], tint: KernlTheme.accent, title: "Profile",
+            case 2: return KernlProfilePage(apps: [.listnr], tint: KernlTheme.accent.withAlphaComponent(0.6), title: "Profile",
                                             subtitle: "What you listen to, and the words that come up.", extra: nil)
             case 3: return KernlFAQPage(app: "listnr", subtitle: "How to use listnr, and anything you ask.")
             case 4: return self.settingsPage()

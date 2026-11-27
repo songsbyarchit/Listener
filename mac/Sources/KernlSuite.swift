@@ -650,7 +650,7 @@ enum KernlFAQ {
         }.resume()
     }
 
-    private static func envKey() -> String? {
+    static func envKey() -> String? {
         let home = FileManager.default.homeDirectoryForCurrentUser
         for path in [".fleet/fleet.env", ".writr/.env", ".speakr/.env"] {
             guard let text = try? String(contentsOf: home.appendingPathComponent(path), encoding: .utf8) else { continue }
@@ -868,4 +868,185 @@ final class KernlInfoPage: NSView {
         ])
     }
     required init?(coder: NSCoder) { fatalError() }
+}
+
+
+// MARK: Feedback
+
+/// The feedback box on the writr and readr popups. Your note and a screenshot
+/// of the whole screen go to the model once, in the background, which turns
+/// them into a short rule: one about this person or place, and one general one
+/// when it applies. Rules live in ~/.fleet/learned.md and ride along with every
+/// draft and explanation. The note and screenshot are deleted after 24 hours.
+enum KernlFeedback {
+    static let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".fleet/feedback", isDirectory: true)
+    static let rulesURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".fleet/learned.md")
+    static let keepFor: TimeInterval = 24 * 3600
+
+    /// Rules to add to a system prompt. Empty when there are none.
+    static func promptNote() -> String {
+        guard let text = try? String(contentsOf: rulesURL, encoding: .utf8) else { return "" }
+        let rules = text.components(separatedBy: .newlines).filter { $0.hasPrefix("- ") }.suffix(30)
+        guard !rules.isEmpty else { return "" }
+        return "\n\nLearned from his feedback (follow these; a rule about the person or app on screen beats the rest):\n" + rules.joined(separator: "\n")
+    }
+
+    static func submit(app: String, note: String, output: String, place: String,
+                       done: ((String?) -> Void)? = nil) {
+        let clean = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        prune()
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
+                                                 attributes: [.posixPermissions: 0o700])
+        let id = UUID().uuidString
+        let shot = folder.appendingPathComponent("\(id).jpg")
+        DispatchQueue.global(qos: .utility).async {
+            capture(to: shot)
+            let record: [String: Any] = ["date": ISO8601DateFormatter().string(from: Date()), "app": app,
+                                         "note": clean, "output": output, "place": place]
+            if let data = try? JSONSerialization.data(withJSONObject: record, options: .prettyPrinted) {
+                try? data.write(to: folder.appendingPathComponent("\(id).json"), options: .atomic)
+            }
+            learn(app: app, note: clean, output: output, place: place, screenshot: shot) { rule in
+                DispatchQueue.main.async { done?(rule) }
+            }
+        }
+    }
+
+    /// Deletes notes and screenshots older than a day.
+    static func prune() {
+        let fm = FileManager.default
+        guard let files = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
+        for file in files {
+            let date = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            if Date().timeIntervalSince(date) > keepFor { try? fm.removeItem(at: file) }
+        }
+    }
+
+    private static func capture(to url: URL) {
+        let raw = url.deletingPathExtension().appendingPathExtension("png")
+        let grab = Process()
+        grab.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        grab.arguments = ["-x", "-m", raw.path]
+        try? grab.run(); grab.waitUntilExit()
+        // Small enough to send quickly: 1600 px wide JPEG.
+        let shrink = Process()
+        shrink.executableURL = URL(fileURLWithPath: "/usr/bin/sips")
+        shrink.arguments = ["-Z", "1600", "-s", "format", "jpeg", raw.path, "--out", url.path]
+        shrink.standardOutput = FileHandle.nullDevice
+        shrink.standardError = FileHandle.nullDevice
+        try? shrink.run(); shrink.waitUntilExit()
+        try? FileManager.default.removeItem(at: raw)
+    }
+
+    private static func learn(app: String, note: String, output: String, place: String, screenshot: URL,
+                              done: @escaping (String?) -> Void) {
+        guard let key = KernlFAQ.envKey() else { return done(nil) }
+        let instructions = """
+        Archit gave feedback on something \(app) wrote for him. Using his note, what \(app) wrote and the screenshot,         write rules for next time. Reply with JSON only: {"person": "", "place": "", "rule": "", "general": ""}.
+        person: the name of the person in the chat on screen, if there is one. place: the app or site (WhatsApp, Slack, LinkedIn, email).
+        rule: one short imperative about this person or place, such as "Keanu is a close friend: reply casually, short, no formalities".
+        general: one short rule that applies everywhere, only if the note implies one, else "".
+        """
+        var content: [[String: Any]] = [["type": "text", "text": "Note: \(note)\nWhat \(app) wrote: \(output.prefix(1500))\nApp in front: \(place)"]]
+        if let data = try? Data(contentsOf: screenshot) {
+            content.append(["type": "image_url", "image_url": ["url": "data:image/jpeg;base64,\(data.base64EncodedString())", "detail": "low"]])
+        }
+        let body: [String: Any] = ["model": "gpt-4o-mini", "temperature": 0.2,
+                                   "response_format": ["type": "json_object"],
+                                   "messages": [["role": "system", "content": instructions], ["role": "user", "content": content]]]
+        var request = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 40
+        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        URLSession.shared.dataTask(with: request) { data, _, _ in
+            guard let data,
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = object["choices"] as? [[String: Any]],
+                  let message = choices.first?["message"] as? [String: Any],
+                  let text = message["content"] as? String,
+                  let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: String] else {
+                return done(nil)
+            }
+            var lines: [String] = []
+            let person = json["person"]?.trimmingCharacters(in: .whitespaces) ?? ""
+            let where_ = (json["place"]?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 } ?? place
+            if let rule = json["rule"], !rule.isEmpty {
+                let tag = [person, where_].filter { !$0.isEmpty }.joined(separator: ", ")
+                lines.append("- [\(tag.isEmpty ? app : tag)] \(rule)")
+            }
+            if let general = json["general"], !general.isEmpty { lines.append("- [everywhere] \(general)") }
+            append(lines)
+            done(lines.first)
+        }.resume()
+    }
+
+    /// Adds rules, replacing an older rule with the same tag, keeping 60 at most.
+    private static func append(_ lines: [String]) {
+        guard !lines.isEmpty else { return }
+        var existing = ((try? String(contentsOf: rulesURL, encoding: .utf8)) ?? "")
+            .components(separatedBy: .newlines).filter { $0.hasPrefix("- ") }
+        for line in lines {
+            let tag = line.components(separatedBy: "]").first ?? line
+            if !tag.contains("everywhere") { existing.removeAll { $0.hasPrefix(tag + "]") } }
+            existing.append(line)
+        }
+        let text = "# Learned from feedback\n\nWritten by writr and readr from your notes. Edit or delete any line.\n\n"
+            + existing.suffix(60).joined(separator: "\n") + "\n"
+        try? text.write(to: rulesURL, atomically: true, encoding: .utf8)
+    }
+}
+
+/// The small "Tell writr what to change" box on the popups.
+final class KernlFeedbackField: NSView, NSTextFieldDelegate {
+    private let field = NSTextField()
+    private let status = fleetLabel("", size: 11, color: KernlTheme.muted, lines: 2)
+    var onSubmit: ((String) -> Void)?
+
+    init(placeholder: String) {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        field.placeholderString = placeholder
+        field.font = Type.sans(12)
+        field.bezelStyle = .roundedBezel
+        field.focusRingType = .none
+        field.delegate = self
+        field.target = self
+        field.action = #selector(send)
+        field.translatesAutoresizingMaskIntoConstraints = false
+        status.isHidden = true
+        let stack = fleetVStack([field, status], spacing: 4)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor), stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor), stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            field.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            field.heightAnchor.constraint(equalToConstant: 26)
+        ])
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    var isTyping: Bool { field.currentEditor() != nil && !field.stringValue.isEmpty }
+
+    func reset() {
+        field.stringValue = ""
+        status.isHidden = true
+    }
+
+    func showLearned(_ rule: String?) {
+        status.isHidden = false
+        status.stringValue = rule.map { "Learned: \($0.replacingOccurrences(of: "- ", with: ""))" } ?? "Saved. It applies from the next one."
+    }
+
+    @objc private func send() {
+        let text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        field.stringValue = ""
+        status.isHidden = false
+        status.stringValue = "Thanks. Learning from it…"
+        onSubmit?(text)
+    }
 }
